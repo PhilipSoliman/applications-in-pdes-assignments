@@ -1,0 +1,48 @@
+\documentclass[11pt]{report}
+
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+
+\input{preamble.tex}
+
+\newcommand{\course}{WI4680 Applications in Partial Differential Equations}
+\title{Assignments}
+\author{Philip Soliman (4945255)}
+\date{\today}
+\newcommand{\namesupervisor}{Dr. H.M. Schuttelaars}
+\newcommand{\university}{Delft University of Technology}
+\newcommand{\faculty}{Faculty of Electrical Engineering, Mathematics and Computer Science}
+
+
+\renewcommand{\thesection}{\LARGE}
+\renewcommand{\thesubsection}{\large\quad\arabic{section}.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\large\quad\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
+
+% Change the (sub)section fonts & make subsec not do a newline - Jelmarp
+% \titleformat{\section}{\normalfont\fontsize{13}{13}\bfseries}{\thesection}{1em}{}
+% \titleformat{\subsection}[runin]{\normalfont\fontsize{12}{15}}{\thesubsection}{0.5em}{}[]
+%----------------------
+
+\begin{document}
+\setcounter{section}{-1}
+
+\maketitle
+
+\tableofcontents
+
+\newpage
+\input{sections/intro.tex}
+
+\newpage
+\input{sections/assignment1.tex}
+
+\newpage
+\input{sections/assignment2.tex}
+
+\newpage
+\input{sections/assignment3.tex}
+
+% \newpage
+% \printbibliography
+
+\end{document}
