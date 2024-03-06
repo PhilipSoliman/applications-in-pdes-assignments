@@ -12,19 +12,19 @@
         $x = \sin \theta$ & -  & latitude coordinate & $[-1, 1]$\\
         $T $ & $K$ & temperature & -\\
         $R_A $ & $J s^{-1} m^{-2}$ & effective solar radiation & - \\
-        $Q $ & $J s^{-1} m^{-2}$ & solar radiation & 341.3\\
-        $Q_0 $ & $J s^{-1} m^{-2}$ & solar radiation constant & -\\
+        $Q $ & $J s^{-1} m^{-2}$ & solar radiation & -\\
+        $Q_0 $ & $J s^{-1} m^{-2}$ & solar radiation constant & 341.3\\
         $\alpha$ & - & albedo of Earth & -\\
-        $\alpha_1$ & - & albedo of water & 0.278\\
-        $\alpha_2$ & - & albedo of ice & 0.7\\
+        $\alpha_1$ & - & albedo of ice & 0.7\\
+        $\alpha_2$ & - & albedo of water & 0.278\\
         $M$ & $K^{-1}$ & temperature gradient (?) & -\\
         $\mu $ & $J s^{-1} m^{-2}$ & greenhouse gas \& fine particle parameter & 30\\
         $R_E $ & $J s^{-1} m^{-2}$ & black body radiation & -\\
         $\epsilon_0$ & - & emmisivity of Earth & 0.61\\
-        $\sigma_0 $ & $J K^{-4}$ & Stefan-Boltzmann constant & $5.67 \cdot 10^{-8}$\\
+        $\sigma_0 $ & $J s^{-1} m^{-2} K^{-4}$ & Stefan-Boltzmann constant & $5.67 \cdot 10^{-8}$\\
         $R_D $ & $J s^{-1} m^{-2}$ & heat dispersion & -\\
-        $D $ & $J s^{-1} $ & heat dispersion constant & 0.3\\
-        $\delta $ & $J s^{-1}$ & heat dispersion at poles & -\\
+        $D $ & $J s^{-1} m^{-2}$ & heat dispersion constant & 0.3\\
+        $\delta $ & $J s^{-1} m^{-2}$ & heat dispersion at poles & 0\\
         $C_T $ & $J K^{-1}$  & heat capacity of Earth & $5 \cdot 10^{8}$\\
         \hline
     \end{tabular}
@@ -33,7 +33,20 @@
 \end{table}
 
 \subsection{Introduction}
-$\delta$ cannot be positive (resp. negative) at the poles otherwise energy would be
-artificially entering (resp. leaving) the system.
+$\delta$ cannot be positive (resp. negative) at $x = \pm 1$ (poles), otherwise energy would be
+artificially entering (resp. leaving) the system. Simply said, the poles cannot be a source or sink of energy.
+This requires us to set $\delta = 0$ at $x = \pm 1$. Furthemore 
+\begin{align*}
+        \left.\frac{d T}{dx}\right|_{x = \pm 1} = 0.
+\label{eq:bcs}
+\end{align*}
+However, we run into a problem when we combine the boundary conditions and set $\delta = 0$. The 
+equation for the heat dispersion vanishes at the boundary and we are left with a zeroth order differential equation 
+for which we simply cannot satisfy, one let alone two, boundary conditions.
 
+The remedies for this are to either give $delta$ a small positive value, or to require that there is no
+dispersion of energy to and from the poles
+\begin{align*}
+    \left.R_D\right|_{x = \pm 1} = 0.
+\end{align*}
 \subsection{Conclusion}
