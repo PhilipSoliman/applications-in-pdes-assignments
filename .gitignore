@@ -172,7 +172,5 @@ report/build/*.fdb_latexmk
 report/build/*.fls
 report/build/*.synctex.gz
 report/build/*.run.xml
-
-
-report/figures/*.png
-report/tables/*.tex
+# report/figures/*.png
+# report/tables/*.tex
