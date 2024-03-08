@@ -8,7 +8,6 @@ from scipy.integrate import fixed_quad as guassian_quadrature_integration
 # gauss-legendre quadrature weights (more efficient as no for loops are used)
 from numpy.polynomial.legendre import leggauss
 
-
 # problem constants and parameters (capitalized is default value)
 MU = 30.0  # greenhouse gas and particle parameter
 a_1 = 0.278  # albedo of water
@@ -52,19 +51,25 @@ def dR_E(T: np.ndarray) -> np.ndarray:
 
 
 # dispersion & legendre polynomials
-def R_D(legendre_polys: np.ndarray, legendre_eigs: np.ndarray) -> np.ndarray:
-    return legendre_eigs[:, None] * legendre_polys
+def R_D(
+    T_coeffs: np.ndarray, legendre_polys: np.ndarray, legendre_eigs: np.ndarray
+) -> np.ndarray:
+    """
+    Evaluate the dispersion term using the coefficients and eigenvalues
+    of the respective Legendre polynomials.
+
+    Returns:
+    --------
+    np.ndarray (m,): The dispersion term evaluated at the given coefficients.
+        m is trhe number of sample points.
+    """
+    return (legendre_eigs * T_coeffs) @ legendre_polys
 
 
 def generate_legendre_polynomials(n: int) -> tuple[list, np.ndarray]:
     polys = [legendre(i) for i in range(n)]
     eigs = np.array([-i * (i + 1) for i in range(n)])
     return (polys, eigs)
-
-
-# Gauss quadrature weights and points
-def get_leggauss_quadrature(n: int) -> tuple[list[np.ndarray]]:
-    return leggauss(n)
 
 
 # evaulate temperature
@@ -80,9 +85,10 @@ def T_x(
     legendre_polys = np.array([poly(x) for poly in legendre_polys])
     return T(T_coeffs, legendre_polys)  # not efficient;  used for visualisation
 
-#TODO: define energy balance only in terms of T_coeffs, x and legendre_polys. 
-#TODO: make seperate function for weak form and its derivative
-#TODO: perform numerical integration in F and F_T
+
+# Gauss quadrature weights and points
+def get_leggauss_quadrature(n: int) -> tuple[list[np.ndarray]]:
+    return leggauss(n)
 
 # full energy balance and its derivative w.r.t. T (coefficients of legendre polys)
 def energy_balance(
@@ -91,28 +97,35 @@ def energy_balance(
     legendre_polys: np.ndarray,
     legendre_eigs: np.ndarray,
 ) -> np.ndarray:
-    T_eval = T(
-        T_coeffs, legendre_polys
-    )  # source of non-linearity in the system (T depends on all legendre polynomials)
-    # broadcast to 2D array
-    n = x.size
-    R_Ab = np.einsum('i,j->ij', R_A(x, T_eval), np.ones(n))
-    R_Eb = np.einsum('i,j->ij', R_E(T_eval), np.ones(n))
-    return (
-        R_D(legendre_polys, legendre_eigs) + R_Ab - R_Eb
-    )  # 2D array such that array[i] = R_D[i] + R_A[i] - R_E[i]
+    T_eval = T(T_coeffs, legendre_polys)
+    return R_D(T_coeffs, legendre_polys, legendre_eigs) + R_A(x, T_eval) - R_E(T_eval)
 
 
 def energy_balance_derivative(
-    x: np.array, T_coeffs: np.ndarray, legendre_polys: np.ndarray
+    x: np.array,
+    T_coeffs: np.ndarray,
+    legendre_polys: np.ndarray,
+    legendre_eigs: np.ndarray,
 ) -> np.ndarray:
+    """
+    Evaluate the derivative of the energy balance terms w.r.t. to (the coefficients of) T
+    using the coefficients and eigenvalues of the respective Legendre polynomials.
+
+    The derivative of the dispersion term are the eigenvalues of the Laplacian
+    multiplied by the Legendre polynomials. The derivative of the solar radiation
+    and the black body radiation are their derivative w.r.t. T multiplied by the
+    Legendre polynomials (chain rule).
+
+    Returns:
+    --------
+    np.ndarray (n, m): The derivative of the energy balance terms evaluated at the given coefficients.
+        m is the number of sample points and n is the number of Legendre polynomials.
+    """
     T_eval = T(T_coeffs, legendre_polys)
-    integrand = (dR_A(x, T_eval) - dR_E(T_eval)) * legendre_polys
-    test_function = legendre_polys
-    out = np.einsum(
-        "is,js->ijs", test_function, integrand
-    )  # tensor such that out[i,j] = (dR_A(T) - dR_E(T)) * phi_j * phi_i
-    return out
+    return (
+        legendre_eigs[:, None] * legendre_polys
+        + (dR_A(x, T_eval) - dR_E(T_eval)) * legendre_polys
+    )
 
 
 # non-linear system of equations
@@ -123,11 +136,10 @@ def F(
     legendre_polys: np.ndarray,
     legendre_eigs: np.ndarray,
 ) -> np.ndarray:
-    return np.sum(
-        quad_weights[:, None]
-        * energy_balance(quad_samples, T_coeffs, legendre_polys, legendre_eigs),
-        axis=0,
-    )
+    integrand = energy_balance(quad_samples, T_coeffs, legendre_polys, legendre_eigs)
+    test_function = legendre_polys
+    weak_form = integrand * test_function
+    return weak_form @ quad_weights[:, None]
 
 
 def F_T(
@@ -135,9 +147,13 @@ def F_T(
     quad_samples: np.ndarray,
     quad_weights: np.ndarray,
     legendre_polys: np.ndarray,
+    legendre_eigs: np.ndarray,
 ) -> np.ndarray:
-    return np.einsum(
-        "s,ijs->ij",
-        quad_weights,
-        energy_balance_derivative(quad_samples, T_coeffs, legendre_polys)
+    integrand = energy_balance_derivative(
+        quad_samples, T_coeffs, legendre_polys, legendre_eigs
     )
+    test_function = legendre_polys
+    weak_form_derivative = np.einsum(
+        "is,js->ijs", test_function, integrand
+    )  # tensor such that out[i,j] = (dR_A(T) - dR_E(T)) * phi_j * phi_i
+    return np.einsum("ijs,s->ij", weak_form_derivative, quad_weights)
