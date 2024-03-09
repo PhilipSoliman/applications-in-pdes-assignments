@@ -13,12 +13,16 @@
 \makeatletter
 \renewcommand\maketitle{
     {
+      \vspace*{3cm}
       \raggedright % Note the extra {
       \begin{center}
       {\normalsize \sffamily \course }\\[2ex] 
       {\Large \bfseries \sffamily \@title }\\[2ex] 
       {\normalsize  \@author}\\[1ex]
       \@date\\[4ex]
+      \end{center}
+      \vspace*{1cm}
+      \begin{center}
       \includegraphics[width=0.5\textwidth]{images/cover_image.jpg}
       \end{center}
     }
@@ -27,7 +31,7 @@
     {
       \begin{tikzpicture}[remember picture, overlay]
           \node[anchor=south east, inner sep=40pt] at (current page.south east) 
-          {\includegraphics[width=0.2\textwidth]{images/tudelft_logo.png}};
+          {\includegraphics[width=0.1\textwidth]{images/tudelft_logo.png}};
       \end{tikzpicture}
     }
       % supervisor info text (bottom left)
