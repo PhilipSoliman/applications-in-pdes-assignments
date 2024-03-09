@@ -39,8 +39,6 @@ plt.legend(fontsize=8)
 plt.title(f"First {n} Legendre Polynomials")
 fn = output_dir / f"legendre_polynomials_n={n}.png"
 plt.savefig(fn, dpi=500)
-print("lamda_n: \n  ", end=" ")
-pprint(legendre_eigs)
 
 ############### Setup Non-linear System of Equations ####################
 T_initial = NLS.T_x(NLS.x)
@@ -60,21 +58,23 @@ print(
     NLS.evaluate_derivative().shape,
 )
 
-# timing function evaluations
+################## timing function evaluations ##################
 timing_loops = 1000
 F_time = timeit(
-    "NLS.evaluate(T_coeffs, sample_points, quad_weights, legendre_polys_at_sample_points, legendre_eigs)",
+    "NLS.evaluate()",
     globals=globals(),
     number=timing_loops,
 )
 
 F_T_time = timeit(
-    "NLS.evaluate_derivative(T_coeffs, sample_points, quad_weights, legendre_polys_at_sample_points, legendre_eigs)",
+    "NLS.evaluate_derivative()",
     globals=globals(),
     number=timing_loops,
 )
 
-print(f"Time to evaluate F(T) (averaged over {timing_loops}): {F_time/1000:.2e} s")
-print(f"Time to evaluate F_T(T) (averaged over {timing_loops}): {F_T_time/1000:.2e} s")
+print(f"Time to evaluate F(T) (averaged over {timing_loops} runs): {F_time/1000:.2e} s")
+print(f"Time to evaluate F_T(T) (averaged over {timing_loops} runs): {F_T_time/1000:.2e} s")
+
+
 
 ################### Newton-Raphson Method ####################
