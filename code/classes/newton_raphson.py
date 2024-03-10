@@ -8,7 +8,7 @@ class NewtonRaphson:
         self.tolerance = tolerance
         self.maxiter = maxiter
         
-    def run(self, f: Callable) -> np.ndarray:
+    def run(self, f: Callable) -> list:
         e_k = 2 * self.tolerance
         errors = [e_k]
         i = 0
@@ -30,7 +30,7 @@ class NewtonRaphson:
             f.T_coeffs -= update
 
             # calculate current error
-            e_k = np.linalg.norm(F_k - f.T_coeffs)
+            e_k = np.linalg.norm(F_k)
             errors.append(e_k)
 
             # set iteration counter
