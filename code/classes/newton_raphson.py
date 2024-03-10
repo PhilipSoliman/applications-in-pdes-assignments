@@ -1,5 +1,5 @@
 import numpy as np
-from non_linear_system import NonLinearSystem
+from typing import Callable
 from tqdm import tqdm
 
 class NewtonRaphson:
@@ -8,7 +8,7 @@ class NewtonRaphson:
         self.tolerance = tolerance
         self.maxiter = maxiter
         
-    def run(self, NLS: NonLinearSystem) -> np.ndarray:
+    def run(self, f: Callable) -> np.ndarray:
         e_k = 2 * self.tolerance
         errors = [e_k]
         i = 0
@@ -24,13 +24,13 @@ class NewtonRaphson:
                 break
 
             # perform coefficient update
-            F_k = NLS.evaluate()
-            F_t_k = NLS.evaluate_derivative()
+            F_k = f.evaluate()
+            F_t_k = f.evaluate_derivative()
             update = np.linalg.solve(F_t_k, F_k)
-            NLS.T_coeffs -= update
+            f.T_coeffs -= update
 
             # calculate current error
-            e_k = np.linalg.norm(F_k - NLS.T_coeffs)
+            e_k = np.linalg.norm(F_k - f.T_coeffs)
             errors.append(e_k)
 
             # set iteration counter

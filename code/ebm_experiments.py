@@ -1,12 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from pprint import pprint
-from custom_pyutils import pyutils
-from typing import Callable
-from timeit import timeit
-from non_linear_system import NonLinearSystem
-from newton_raphson import NewtonRaphson
-from tqdm import tqdm
+from helper import pyutils
+from classes.non_linear_system import NonLinearSystem
+from classes.newton_raphson import NewtonRaphson
 
 
 # set figure output directory
@@ -24,7 +20,7 @@ grid_resolution = 100  # resolution of the grid
 
 ############### Setup Non-linear System of Equations ####################
 NLS = NonLinearSystem(n, number_of_quad_points, grid_resolution)
-legendre_polys_norm = np.array([2*(2*i + 1) for i in range(n)])
+
 # print("Problem constants:\n  ", end="")
 # pprint({k: v for k, v in NLS.__dict__.items()})
 

@@ -5,8 +5,6 @@ from typing import Callable
 # easy guassian quadrature integration
 from scipy.integrate import fixed_quad as guassian_quadrature_integration
 
-# from definitions import *
-
 # gauss-legendre quadrature weights (more efficient as no for loops are used)
 from numpy.polynomial.legendre import leggauss
 
@@ -48,7 +46,7 @@ class NonLinearSystem:
         self._D = NonLinearSystem.D_default
 
     # legendre polynomials and eigenvalues
-    def generate_legendre_polynomials(self) -> tuple[list, np.ndarray]:
+    def generate_legendre_polynomials(self) -> tuple[list[Callable], np.ndarray]:
         polys = [legendre(i) for i in range(self.n_polys)]
         eigs = np.array([-i * (i + 1) for i in range(self.n_polys)])
         norms = np.array([2 / (2 * i + 1) for i in range(self.n_polys)])
