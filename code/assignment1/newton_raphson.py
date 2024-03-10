@@ -1,66 +1,44 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from pprint import pprint
-from custom_pyutils import pyutils
-from typing import Callable
-from timeit import timeit
 from non_linear_system import NonLinearSystem
 from tqdm import tqdm
 
+class NewtonRaphson:
 
-# set figure output directory
-root = pyutils.get_root()
-output_dir = root / "report" / "figures"
-print(f"Output directory:\n  {output_dir}")
+    def __init__(self, tolerance: float = 1e-6, maxiter: int = 100) -> None:
+        self.tolerance = tolerance
+        self.maxiter = maxiter
+        
+    def run(self, NLS: NonLinearSystem) -> np.ndarray:
+        e_k = 2 * self.tolerance
+        errors = [e_k]
+        i = 0
+        print("Running Newton-Raphson method...")
+        pbar = tqdm(desc="", total=self.maxiter, unit="NR update", miniters=5)
+        while e_k > self.tolerance:
+            pbar.set_description(f"iteration: {i}, error: {errors[i]:.2e}, tolerance: {self.tolerance:.2e}, maxiter: {self.maxiter}")
+            if i == self.maxiter:
+                pbar.close()
+                print(
+                    "Newton-Raphson method did not converge within the maximum number of iterations. Exiting..."
+                )
+                break
 
-# set standard matplotlib style
-pyutils.set_style()
+            # perform coefficient update
+            F_k = NLS.evaluate()
+            F_t_k = NLS.evaluate_derivative()
+            update = np.linalg.solve(F_t_k, F_k)
+            NLS.T_coeffs -= update
 
-############### Computation parameters ####################
-n = 10  # number of Legendre polynomials
-number_of_quad_points = 2 * n  # number of quadrature points
-grid_resolution = 100  # resolution of the grid
-tolerance = 1e-6  # tolerance for Newton-Raphson method
+            # calculate current error
+            e_k = np.linalg.norm(F_k - NLS.T_coeffs)
+            errors.append(e_k)
 
-############### Setup Non-linear System of Equations ####################
-NLS = NonLinearSystem(n, number_of_quad_points, grid_resolution)
+            # set iteration counter
+            i += 1
+        
+        if e_k <= self.tolerance:
+            pbar.close()
+            print("Newton-Raphson converged.")
 
-print("Problem constants:\n  ", end="")
-pprint({k: v for k, v in NLS.__dict__.items()})
+        return errors
 
-print("Plotting initial guess for T...")
-T_initial = NLS.T_x(NLS.x)
-plt.close()
-plt.plot(NLS.x, T_initial, label="Initial guess")
-plt.title("Initial guess for T")
-plt.legend(fontsize=8)
-fn = output_dir / "initial_guess_T.png"
-plt.savefig(fn, dpi=500)
-print("Saved initial guess for T to:\n  ", fn)
-
-################### Newton-Raphson Method ####################
-errors = [2 * tolerance]
-maxiter = 100
-i = 0  # iteration counter
-print("Running Newton-Raphson method...")
-pbar = tqdm(desc="", total=maxiter, unit="NR update", miniters=1)
-while errors[i] > tolerance:
-    if i == maxiter:
-        print(
-            "Newton-Raphson method did not converge within the maximum number of iterations. Exiting..."
-        )
-        break
-
-    errors.append(
-        np.linalg.norm(NLS.evaluate() - NLS.T_coeffs)
-    )  # error is the norm of the residual
-    # TODO: fix the coefficient update (probably something wrong with the corr. getter/setter)
-    NLS.T_coeffs = NLS.T_coeffs - np.linalg.solve(
-        NLS.evaluate_derivative(), NLS.T_coeffs
-    )  # update T_coeff
-    i += 1  # increment iteration counter
-    pbar.set_description(
-        f"iteration: {i}, error: {errors[i]:.2e}"
-    )  # update progress bar
-
-print(NLS.T_coeffs)

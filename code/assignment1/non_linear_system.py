@@ -15,7 +15,7 @@ class NonLinearSystem:
 
     # problem constants and parameters (capitalized is default value)
     mu_default = 30.0  # greenhouse gas and particle parameter
-    a_1 = 0.278  # albedo of water
+    a_1 = 0.289  # albedo of water
     a_2 = 0.7  # albedo of ice
     T_star = 273.15  # freezing temperature
     delta = 0  # heat flux at poles
@@ -23,7 +23,7 @@ class NonLinearSystem:
     sigma_0 = 5.67e-8  # Stefan-Boltzmann constant
     epsilon_0 = 0.61  # emissivity of the Earth
     C_T = 5.0e8  # heat capacity of the Earth
-    D_default = 0.3 # heat dispersion coefficient
+    D_default = 0.3  # heat dispersion coefficient
 
     def __init__(self, n_polys: int, n_quad_points: int, n_gridpoints: int) -> None:
         self.n_polys = n_polys
@@ -43,6 +43,7 @@ class NonLinearSystem:
 
         # default values of properties
         self._T_coeffs = np.zeros(n_polys)
+        self._T_coeffs[0] = NonLinearSystem.T_star # earth has a homogeneous temperature
         self._mu = NonLinearSystem.mu_default
         self._D = NonLinearSystem.D_default
 
@@ -50,6 +51,7 @@ class NonLinearSystem:
     def generate_legendre_polynomials(self) -> tuple[list, np.ndarray]:
         polys = [legendre(i) for i in range(self.n_polys)]
         eigs = np.array([-i * (i + 1) for i in range(self.n_polys)])
+        norms = np.array([2 / (2 * i + 1) for i in range(self.n_polys)])
         return (polys, eigs)
 
     # Gauss quadrature weights and points
@@ -109,10 +111,11 @@ class NonLinearSystem:
         np.ndarray: vector such that out[i] = int_{-1}{1} [(R_D(T) + R_A(T) - R_E(T))] * phi_i dx
 
         """
-        integrand = self.energy_balance(self.quad_samples)
+        integrand = self.energy_balance()
         test_function = self.legendre_polys
         weak_form = integrand * test_function
-        return weak_form @ self.quad_weights[:, None]
+        # return (weak_form @ self.quad_weights[:, None]).flatten()
+        return weak_form.dot(self.quad_weights)
 
     def evaluate_derivative(self) -> np.ndarray:
         """
@@ -121,30 +124,23 @@ class NonLinearSystem:
         --------
         np.ndarray: matrix such that out[i,j] = int_{-1}{1} [(lambda_j + dR_A(T) - dR_E(T)) * phi_j] * phi_i dx
         """
-        integrand = self.energy_balance_derivative(self.quad_samples)
+        integrand = self.energy_balance_derivative()
         test_function = self.legendre_polys
         weak_form_derivative = np.einsum("is,js->ijs", test_function, integrand)
         return np.einsum("ijs,s->ij", weak_form_derivative, self.quad_weights)
 
     ######## Energy balance terms ########
-    def energy_balance(
-        self,
-        x: np.ndarray,
-    ) -> np.ndarray:
-        T_eval = self.T_eval()  # perform evaluate here not in the functions
-        # to avoid redundant computation
-        return self.R_D() + self.R_A(x, T_eval) - self.R_E(T_eval)
+    def energy_balance(self) -> np.ndarray:
+        T_eval = self.T_eval()
+        return self.R_D() + self.R_A(self.quad_samples, T_eval) - self.R_E(T_eval)
 
-    def energy_balance_derivative(
-        self,
-        x: np.array,
-    ) -> np.ndarray:
+    def energy_balance_derivative(self) -> np.ndarray:
         """
         Evaluate the derivative of the energy balance terms w.r.t. to (the coefficients of) T
         using the coefficients and eigenvalues of the respective Legendre polynomials.
 
         The derivative of the dispersion term are the eigenvalues of the Laplacian
-        multiplied by the Legendre polynomials. The derivative of the solar radiation
+        multiplied by the Legendre polynomials (see dR_d method). The derivative of the solar radiation
         and the black body radiation are their derivative w.r.t. T multiplied by the
         Legendre polynomials (chain rule).
 
@@ -155,8 +151,9 @@ class NonLinearSystem:
         """
         T_eval = self.T_eval()
         return (
-            self.legendre_eigs[:, None] * self.legendre_polys
-            + (self.dR_A(x, T_eval) - self.dR_E(T_eval)) * self.legendre_polys
+            self.dR_D()
+            + (self.dR_A(self.quad_samples, T_eval) - self.dR_E(T_eval))
+            * self.legendre_polys
         )
 
     # solar radiation (R_A)
@@ -200,7 +197,19 @@ class NonLinearSystem:
 
         Returns:
         --------
-        np.ndarray (m,): The dispersion term evaluated at the given coefficients.
-            m is trhe number of sample points.
+        np.ndarray (m,): The dispersion term evaluated for the current T_coeffs
+            and at the m quad_sample points.
         """
-        return (self.legendre_eigs * self.T_coeffs) @ self.legendre_polys
+        return (self.legendre_eigs / self.D * self.T_coeffs) @ self.legendre_polys
+
+    def dR_D(self) -> np.ndarray:
+        """
+        Evaluate the derivative of the dispersion term using the coefficients and eigenvalues
+        of the respective Legendre polynomials.
+
+        Returns:
+        --------
+        np.ndarray (n, m): The derivative of the dispersion term evaluated at the given coefficients.
+            m is the number of sample points and n is the number of Legendre polynomials.
+        """
+        return self.legendre_eigs[:, None] / self.D * self.legendre_polys
