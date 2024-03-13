@@ -14,9 +14,10 @@ print(f"Output directory:\n  {output_dir}")
 pyutils.set_style()
 
 ############### Computation parameters ####################
-n = 10  # number of Legendre polynomials
+n = 20  # number of Legendre polynomials
 number_of_quad_points = 2 * n  # number of quadrature points
 grid_resolution = 100  # resolution of the grid
+initial_temperature = 221.356  # initial guess for (T # follows from boundary conditions and delta = 0)
 
 ############### Setup Non-linear System of Equations ####################
 NLS = NonLinearSystem(n, number_of_quad_points, grid_resolution)
@@ -25,6 +26,7 @@ NLS = NonLinearSystem(n, number_of_quad_points, grid_resolution)
 # pprint({k: v for k, v in NLS.__dict__.items()})
 
 print("Plotting initial guess for T...")
+NLS.T_coeffs[0] = initial_temperature 
 T_initial = NLS.T_x(NLS.x)
 plt.close()
 plt.plot(NLS.x, T_initial, label="Initial guess")
@@ -35,7 +37,7 @@ plt.savefig(fn, dpi=500)
 print("Saved initial guess for T to:\n  ", fn)
 
 ################### Newton-Raphson Method ####################
-NR = NewtonRaphson()
+NR = NewtonRaphson(maxiter=1000)
 errors = NR.run(NLS)
 
 # plot error convergence
@@ -48,3 +50,13 @@ plt.yscale("log")
 fn = output_dir / "error_convergence.png"
 plt.savefig(fn, dpi=500)
 print("Saved error convergence to:\n  ", fn)
+
+
+# plot final solution
+T_final = NLS.T_x(NLS.x)
+plt.close()
+plt.plot(NLS.x, T_final, label="Final solution")
+plt.title("Final solution for T")
+fn = output_dir / "equilibrium_T.png"
+plt.savefig(fn, dpi=500)
+print("Saved equilibrium T to:\n  ", fn)

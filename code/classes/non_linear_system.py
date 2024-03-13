@@ -27,7 +27,7 @@ class NonLinearSystem:
         self.n_polys = n_polys
         self.n_quad_points = n_quad_points
         self.n_gridpoints = n_gridpoints
-        self.legendre_polys_callable, self.legendre_eigs = (
+        self.legendre_polys_callable, self.legendre_eigs, self.legendre_norms = (
             self.generate_legendre_polynomials()
         )
         self.quad_samples, self.quad_weights = self.get_leggauss_quadrature()
@@ -50,7 +50,7 @@ class NonLinearSystem:
         polys = [legendre(i) for i in range(self.n_polys)]
         eigs = np.array([-i * (i + 1) for i in range(self.n_polys)])
         norms = np.array([2 / (2 * i + 1) for i in range(self.n_polys)])
-        return (polys, eigs)
+        return (polys, eigs, norms)
 
     # Gauss quadrature weights and points
     def get_leggauss_quadrature(self) -> tuple[list[np.ndarray]]:
@@ -125,7 +125,8 @@ class NonLinearSystem:
         integrand = self.energy_balance_derivative()
         test_function = self.legendre_polys
         weak_form_derivative = np.einsum("is,js->ijs", test_function, integrand)
-        return np.einsum("ijs,s->ij", weak_form_derivative, self.quad_weights)
+        # return np.einsum("ijs,s->ij", weak_form_derivative, self.quad_weights)
+        return weak_form_derivative @ self.quad_weights
 
     ######## Energy balance terms ########
     def energy_balance(self) -> np.ndarray:
