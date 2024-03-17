@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from helper import pyutils
-from ebm import NonLinearSystem
+pyutils.add_modules_to_path()
+from ebm import EBM
 import numpy as np
 
 root = pyutils.get_root()
@@ -13,7 +14,7 @@ n = 10  # number of Legendre polynomials
 number_of_quad_points = 4 * n # number of quadrature points
 grid_resolution = 100  # resolution of the grid
 
-NLS = NonLinearSystem(n, number_of_quad_points, grid_resolution)
+NLS = EBM(n, number_of_quad_points, grid_resolution)
 
 for poly in NLS.legendre_polys_callable:
     plt.plot(NLS.x, poly(NLS.x), label=f"$\phi_{NLS.legendre_polys_callable.index(poly)}$")

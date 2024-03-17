@@ -100,7 +100,7 @@ class EBM(NonLinearSystem):
         )
         return self.T_coeffs @ legendre_polys_eval
 
-    ######## non-linear system of equations ########
+    ######## non-linear system of equations (override NLS abstract methods)########
     def evaluate(self) -> np.ndarray:
         """
         perfroms numerical integration using Gauss quadrature to evaluate the non-linear system of equations.

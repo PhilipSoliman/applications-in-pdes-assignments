@@ -56,8 +56,8 @@ T_final_fd = ebm.T_x(ebm.x)
 
 # plot error convergence
 plt.close()
-plt.plot(errors[1:])
-plt.plot(errors_fd[1:])
+plt.plot(errors)
+plt.plot(errors_fd)
 plt.title("Error convergence")
 plt.xlabel("Iteration")
 plt.ylabel("Error")

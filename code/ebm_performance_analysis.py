@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from helper import pyutils
-from ebm import NonLinearSystem
+pyutils.add_modules_to_path()
+from ebm import EBM
 from timeit import timeit
 from tqdm import tqdm
 
@@ -22,15 +23,15 @@ pbar = tqdm(enumerate(n_values), desc="", total=n_max, unit="run", miniters=10)
 
 print("Running NLS evaluation time for different n...")
 for i, n in pbar:
-    NLS = NonLinearSystem(n, 2 * n, 100)
+    ebm = EBM(n, 2 * n, 100)
     F_time = timeit(
-        "NLS.evaluate()",
+        "ebm.evaluate()",
         globals=globals(),
         number=timing_loops,
     )
     F_times[i] = F_time
     F_T_time = timeit(
-        "NLS.evaluate_derivative()",
+        "ebm.evaluate_derivative()",
         globals=globals(),
         number=timing_loops,
     )

@@ -12,7 +12,7 @@ class RootFinding:
     def newtonRaphson(
         self, NLS: NonLinearSystem, exact: bool = True, stepsize: float = 1e-6
     ) -> list:
-        error = 2 * self.tolerance
+        error = np.linalg.norm(NLS.evaluate())
         errors = [error]
         i = 0
         if exact:
