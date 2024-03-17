@@ -1,20 +1,28 @@
 import numpy as np
 from tqdm import tqdm
-from non_linear_system import NonLinearSystem 
+from ebm import NonLinearSystem
+
 
 class RootFinding:
 
-    def __init__(self, tolerance: float = 1e-6, maxiter: int = 100) -> None:
+    def __init__(self, tolerance: float = 1e-5, maxiter: int = 100) -> None:
         self.tolerance = tolerance
         self.maxiter = maxiter
 
-    def newtonRaphson(self, NLS: NonLinearSystem) -> list:
-        e_k = 2 * self.tolerance
-        errors = [e_k]
+    def newtonRaphson(
+        self, NLS: NonLinearSystem, exact: bool = True, stepsize: float = 1e-6
+    ) -> list:
+        error = 2 * self.tolerance
+        errors = [error]
         i = 0
-        print("Running Newton-Raphson method...")
+        if exact:
+            print(f"Running Newton-Raphson with exact derivatives...")
+        else:
+            print(
+                f"Running Newton-Raphson with finite difference derivatives (h = {stepsize})..."
+            )
         pbar = tqdm(desc="", total=self.maxiter, unit="NR update", miniters=5)
-        while e_k > self.tolerance:
+        while error > self.tolerance:
             pbar.set_description(
                 f"iteration: {i}, error: {errors[i]:.2e}, tolerance: {self.tolerance:.2e}, maxiter: {self.maxiter}"
             )
@@ -25,23 +33,27 @@ class RootFinding:
                 )
                 break
 
-            # perform coefficient update
-            F_k = NLS.evaluate()
-            # print('\nF_K ', F_k)
-            F_t_k = NLS.evaluate_derivative()
-            # print('\nF_t_k ', F_t_k)
-            update = np.linalg.solve(F_t_k, F_k)
-            NLS.T_coeffs -= update
+            F = NLS.evaluate()
+            if exact:
+                dF = NLS.evaluate_derivative()
+            else:
+                dF = NLS.evaluate_derivative_finite_difference(stepsize)
+                print(dF)
+            update = np.linalg.solve(dF, F)
+            NLS.update_solution(-update)
 
             # calculate current error
-            e_k = np.linalg.norm(F_k)
-            errors.append(e_k)
+            error = np.linalg.norm(F)
+            errors.append(error)
 
             # set iteration counter
             i += 1
 
-        if e_k <= self.tolerance:
+        if error <= self.tolerance:
             pbar.close()
             print("Newton-Raphson converged.")
 
         return errors
+
+    def arcLength() -> None:
+        pass

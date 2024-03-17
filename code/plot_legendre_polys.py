@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from helper import pyutils
-from non_linear_system import NonLinearSystem
+from ebm import NonLinearSystem
 import numpy as np
 
 root = pyutils.get_root()
