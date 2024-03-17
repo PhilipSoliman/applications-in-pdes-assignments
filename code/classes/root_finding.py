@@ -1,15 +1,14 @@
 import numpy as np
-from typing import Callable
 from tqdm import tqdm
+from non_linear_system import NonLinearSystem 
 
-
-class NewtonRaphson:
+class RootFinding:
 
     def __init__(self, tolerance: float = 1e-6, maxiter: int = 100) -> None:
         self.tolerance = tolerance
         self.maxiter = maxiter
 
-    def run(self, NLS) -> list:
+    def newtonRaphson(self, NLS: NonLinearSystem) -> list:
         e_k = 2 * self.tolerance
         errors = [e_k]
         i = 0
@@ -28,7 +27,9 @@ class NewtonRaphson:
 
             # perform coefficient update
             F_k = NLS.evaluate()
+            # print('\nF_K ', F_k)
             F_t_k = NLS.evaluate_derivative()
+            # print('\nF_t_k ', F_t_k)
             update = np.linalg.solve(F_t_k, F_k)
             NLS.T_coeffs -= update
 

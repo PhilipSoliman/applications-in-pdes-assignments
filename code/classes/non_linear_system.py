@@ -13,15 +13,16 @@ class NonLinearSystem:
 
     # problem constants and parameters (capitalized is default value)
     mu_default = 30.0  # greenhouse gas and particle parameter
-    a_1 = 0.289  # albedo of water
-    a_2 = 0.7  # albedo of ice
-    T_star = 273.15  # freezing temperature
+    a_1 = 0.7  # albedo of water
+    a_2 = 0.289  # albedo of ice
+    T_star = 272  # freezing temperature
     delta = 0  # heat flux at poles
     Q_0 = 341.3  # solar radiation constant
     sigma_0 = 5.67e-8  # Stefan-Boltzmann constant
     epsilon_0 = 0.61  # emissivity of the Earth
     C_T = 5.0e8  # heat capacity of the Earth
     D_default = 0.3  # heat dispersion coefficient
+    M = 0.1 # temperature scaling parameter
 
     def __init__(self, n_polys: int, n_quad_points: int, n_gridpoints: int) -> None:
         self.n_polys = n_polys
@@ -124,7 +125,7 @@ class NonLinearSystem:
         """
         integrand = self.energy_balance_derivative()
         test_function = self.legendre_polys
-        weak_form_derivative = np.einsum("is,js->ijs", test_function, integrand)
+        weak_form_derivative = np.einsum("js,is->ijs", integrand, test_function)
         # return np.einsum("ijs,s->ij", weak_form_derivative, self.quad_weights)
         return weak_form_derivative @ self.quad_weights
 
@@ -157,36 +158,48 @@ class NonLinearSystem:
 
     # solar radiation (R_A)
     def R_A(self, x: np.ndarray, T: np.ndarray) -> np.ndarray:
-        return NonLinearSystem.Q_solar(x) * (1 - NonLinearSystem.albedo(T)) + self.mu
+        # return NonLinearSystem.Q_solar(x) * (1 - NonLinearSystem.albedo(T)) + self.mu
+        out = NonLinearSystem.Q_solar(x) * (1 - NonLinearSystem.albedo(T)) + self.mu
+        # return np.zeros_like(out)
+        return out
 
     @staticmethod
     def dR_A(x: np.ndarray, T: np.ndarray) -> np.ndarray:
-        return NonLinearSystem.Q_solar(x) * NonLinearSystem.dalbedo(T)
+        # return NonLinearSystem.Q_solar(x) * NonLinearSystem.dalbedo(T)
+        out = NonLinearSystem.Q_solar(x) * NonLinearSystem.dalbedo(T)
+        # return np.zeros_like(out)
+        return out
 
     @staticmethod
     def Q_solar(x: np.ndarray) -> np.ndarray:
-        return NonLinearSystem.Q_0 * (1 - 0.241 * (1 - x**2))
+        return NonLinearSystem.Q_0 * (1 - 0.241 * (3*x**2 - 1))
 
     @staticmethod
     def albedo(T: np.ndarray) -> np.ndarray:
         return NonLinearSystem.a_1 + (NonLinearSystem.a_2 - NonLinearSystem.a_1) / 2 * (
-            1 + np.tanh(T - NonLinearSystem.T_star)
+            1 + np.tanh(NonLinearSystem.M*(T - NonLinearSystem.T_star))
         )
 
     @staticmethod
     def dalbedo(T: np.ndarray) -> np.ndarray:
-        return (NonLinearSystem.a_2 - NonLinearSystem.a_1) / (
-            2 * np.cos(T - NonLinearSystem.T_star) ** 2
+        return NonLinearSystem.M * (NonLinearSystem.a_2 - NonLinearSystem.a_1) / (
+            2 * np.cos(NonLinearSystem.M*(T - NonLinearSystem.T_star)) ** 2
         )
 
     @staticmethod
     # Black body radiation (R_E)
     def R_E(T: np.ndarray) -> np.ndarray:
-        return NonLinearSystem.epsilon_0 * NonLinearSystem.sigma_0 * T**4
+        # return NonLinearSystem.epsilon_0 * NonLinearSystem.sigma_0 * T**4
+        out = NonLinearSystem.epsilon_0 * NonLinearSystem.sigma_0 * T**4
+        # return np.zeros_like(out)
+        return out
 
     @staticmethod
     def dR_E(T: np.ndarray) -> np.ndarray:
-        return 4 * NonLinearSystem.epsilon_0 * NonLinearSystem.sigma_0 * T**3
+        # return 4 * NonLinearSystem.epsilon_0 * NonLinearSystem.sigma_0 * T**3
+        out = 4 * NonLinearSystem.epsilon_0 * NonLinearSystem.sigma_0 * T**3
+        # return np.zeros_like(out)
+        return out
 
     # dispersion & legendre polynomials
     def R_D(self) -> np.ndarray:

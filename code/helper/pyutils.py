@@ -12,6 +12,14 @@ def get_root() -> Path:
     # return Path(getcwd()).resolve()
 
 
+def add_modules_to_path() -> None:
+    root = get_root()
+    path.append(str(root / "code"))
+    path.append(str(root / "code" / "classes"))
+    path.append(str(root / "code" / "helper"))
+    path.append(str(root / "code" / "tests"))
+
+
 # get CLI
 def get_cli_args() -> dict:
     args_d = {}

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from helper import pyutils
-from classes.non_linear_system import NonLinearSystem
+from non_linear_system import NonLinearSystem
 from timeit import timeit
 from tqdm import tqdm
 
