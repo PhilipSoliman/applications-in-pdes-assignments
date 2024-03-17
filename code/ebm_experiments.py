@@ -42,7 +42,7 @@ plt.savefig(fn, dpi=500)
 print("Saved initial guess for T to:\n  ", fn)
 
 ################### Newton-Raphson Method ####################
-rootfinding = RootFinding(maxiter=1)
+rootfinding = RootFinding(maxiter=maxiter)
 
 # run Newton-Raphson method
 errors = rootfinding.newtonRaphson(ebm)
@@ -51,7 +51,7 @@ T_final_exact = ebm.T_x(ebm.x)
 # run Newton-Raphson method with finite difference
 ebm.T_coeffs = np.zeros(n)
 ebm.T_coeffs[0] = initial_temperature
-errors_fd = rootfinding.newtonRaphson(ebm, exact=False, stepsize=1e-3)
+errors_fd = rootfinding.newtonRaphson(ebm, exact=False, stepsize=1e3)
 T_final_fd = ebm.T_x(ebm.x)
 
 # plot error convergence
@@ -75,3 +75,27 @@ plt.legend()
 fn = output_dir / "equilibrium_T.png"
 plt.savefig(fn, dpi=500)
 print("Saved equilibrium T to:\n  ", fn)
+
+##################### exact vs finite difference jacobian #####################
+stepsizes = np.logspace(-13, 7, 100)
+errors = []
+ebm.T_coeffs = np.zeros(n)
+ebm.T_coeffs[0] = initial_temperature
+_ = rootfinding.newtonRaphson(ebm) # find equilibrium solution
+jacobian_exact = ebm.evaluate_derivative()
+print("Running finite difference jacobian approximation analysis...")
+for h in stepsizes:
+    jacobian_fd = ebm.evaluate_derivative_finite_difference(h)
+    error = np.linalg.norm(jacobian_exact-jacobian_fd, ord='fro')
+    errors.append(error)
+
+plt.close()
+plt.plot(stepsizes, errors)
+plt.xscale("log")
+plt.yscale("log")
+plt.title("Error in Jacobian approximation")
+plt.xlabel("Stepsize")
+plt.ylabel("Error")
+fn = output_dir / "jacobian_approximation_error.png"
+plt.savefig(fn, dpi=500)
+print("Saved jacobian approximation error to:\n  ", fn)

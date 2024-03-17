@@ -10,6 +10,7 @@ from numpy.polynomial.legendre import leggauss
 
 from non_linear_system import NonLinearSystem
 
+
 class EBM(NonLinearSystem):
     # problem constants and parameters (capitalized is default value)
     mu_default = 30.0  # greenhouse gas and particle parameter
@@ -42,9 +43,7 @@ class EBM(NonLinearSystem):
 
         # default values of properties
         self._T_coeffs = np.zeros(n_polys)
-        self._T_coeffs[0] = (
-            EBM.T_star
-        )  # earth has a homogeneous temperature
+        self._T_coeffs[0] = EBM.T_star  # earth has a homogeneous temperature
         self._mu = EBM.mu_default
         self._D = EBM.D_default
 
@@ -141,15 +140,16 @@ class EBM(NonLinearSystem):
         --------
         np.ndarray: matrix such that out[i,j] = (F(T(a_i + h))[j] - F(T)[j]) / h
         """
-        F_T = self.evaluate()
-        T_coeffs_plus_h = self.T_coeffs * np.ones((self.n_polys, self.n_polys)) + h * np.eye(self.n_polys)
+        T_coeffs_plus_h = self.T_coeffs * np.ones(
+            (self.n_polys, self.n_polys)
+        ) + h * np.eye(self.n_polys)
         T_plus_h = T_coeffs_plus_h @ self.legendre_polys
-        integrand = self.energy_balance(T_plus_h) # n x n_samples
+        integrand = (
+            self.energy_balance(T_plus_h) - self.energy_balance(self.T_eval())
+        ) / h
         test_function = self.legendre_polys
-        weak_form = np.einsum("is,js->ijs", integrand, test_function)
-        F_T_plus_h = weak_form @ self.quad_weights
-        return (F_T_plus_h - F_T[:, None]) / h
-    
+        return np.einsum("is,js->jis", integrand, test_function) @ self.quad_weights
+
     def update_solution(self, update: np.ndarray) -> None:
         """
         Add the given update to current solution.
@@ -206,11 +206,7 @@ class EBM(NonLinearSystem):
 
     @staticmethod
     def dalbedo(T: np.ndarray) -> np.ndarray:
-        return (
-            EBM.M
-            * (EBM.a_2 - EBM.a_1)
-            / (2 * np.cos(EBM.M * (T - EBM.T_star)) ** 2)
-        )
+        return EBM.M * (EBM.a_2 - EBM.a_1) / (2 * np.cos(EBM.M * (T - EBM.T_star)) ** 2)
 
     @staticmethod
     # Black body radiation (R_E)
