@@ -174,3 +174,6 @@ report/build/*.synctex.gz
 report/build/*.run.xml
 # report/figures/*.png
 # report/tables/*.tex
+
+# vscode
+.vscode/
