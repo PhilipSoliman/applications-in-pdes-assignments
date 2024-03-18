@@ -140,7 +140,7 @@ class EBM(NonLinearSystem):
         --------
         np.ndarray: matrix such that out[i,j] = (F(T(a_i + h))[j] - F(T)[j]) / h
         """
-        T_coeffs_plus_h = self.T_coeffs * np.ones(
+        T_coeffs_plus_h = self.T_coeffs[:,None] * np.ones(
             (self.n_polys, self.n_polys)
         ) + h * np.eye(self.n_polys)
         T_plus_h = T_coeffs_plus_h @ self.legendre_polys
@@ -148,7 +148,7 @@ class EBM(NonLinearSystem):
             self.energy_balance(T_plus_h) - self.energy_balance(self.T_eval())
         ) / h
         test_function = self.legendre_polys
-        return np.einsum("is,js->jis", integrand, test_function) @ self.quad_weights
+        return np.einsum("is,js->ijs", integrand, test_function) @ self.quad_weights
 
     def update_solution(self, update: np.ndarray) -> None:
         """

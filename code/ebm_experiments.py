@@ -42,7 +42,7 @@ plt.savefig(fn, dpi=500)
 print("Saved initial guess for T to:\n  ", fn)
 
 ################### Newton-Raphson Method ####################
-rootfinding = RootFinding(maxiter=maxiter)
+rootfinding = RootFinding(maxiter=1)
 
 # run Newton-Raphson method
 errors = rootfinding.newtonRaphson(ebm)
@@ -77,7 +77,7 @@ plt.savefig(fn, dpi=500)
 print("Saved equilibrium T to:\n  ", fn)
 
 ##################### exact vs finite difference jacobian #####################
-stepsizes = np.logspace(-13, 7, 100)
+stepsizes = np.logspace(-3, 7, 100)
 errors = []
 ebm.T_coeffs = np.zeros(n)
 ebm.T_coeffs[0] = initial_temperature

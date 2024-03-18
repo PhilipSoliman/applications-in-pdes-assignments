@@ -38,6 +38,7 @@ class RootFinding:
                 dF = NLS.evaluate_derivative()
             else:
                 dF = NLS.evaluate_derivative_finite_difference(stepsize)
+            print(dF)
             update = np.linalg.solve(dF, F)
             NLS.update_solution(-update)
 
