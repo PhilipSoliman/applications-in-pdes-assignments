@@ -8,6 +8,7 @@ class RootFinding:
     def __init__(self, tolerance: float = 1e-5, maxiter: int = 100) -> None:
         self.tolerance = tolerance
         self.maxiter = maxiter
+        self.converged = False
 
     def newtonRaphson(
         self, NLS: NonLinearSystem, exact: bool = True, stepsize: float = 1e-6
@@ -38,7 +39,7 @@ class RootFinding:
                 dF = NLS.evaluate_derivative()
             else:
                 dF = NLS.evaluate_derivative_finite_difference(stepsize)
-            print(dF)
+            # print(dF)
             update = np.linalg.solve(dF, F)
             NLS.update_solution(-update)
 
@@ -51,9 +52,13 @@ class RootFinding:
 
         if error <= self.tolerance:
             pbar.close()
+            self.converged = True
             print("Newton-Raphson converged.")
 
         return errors
+    
+    def broydensMethod() -> None:
+        pass
 
     def arcLength() -> None:
         pass

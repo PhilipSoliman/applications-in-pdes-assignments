@@ -16,7 +16,7 @@ print(f"Output directory:\n  {output_dir}")
 pyutils.set_style()
 
 ############### Computation parameters ####################
-n = 10  # number of Legendre polynomials
+n = 5  # number of Legendre polynomials
 number_of_quad_points = 2 * n  # number of quadrature points
 grid_resolution = 100  # resolution of the grid
 initial_temperature = (
@@ -42,26 +42,43 @@ plt.savefig(fn, dpi=500)
 print("Saved initial guess for T to:\n  ", fn)
 
 ################### Newton-Raphson Method ####################
-rootfinding = RootFinding(maxiter=1)
+rootfinding = RootFinding(maxiter=1000)
 
 # run Newton-Raphson method
 errors = rootfinding.newtonRaphson(ebm)
 T_final_exact = ebm.T_x(ebm.x)
+conv_exact = rootfinding.converged
 
 # run Newton-Raphson method with finite difference
 ebm.T_coeffs = np.zeros(n)
 ebm.T_coeffs[0] = initial_temperature
 errors_fd = rootfinding.newtonRaphson(ebm, exact=False, stepsize=1e3)
 T_final_fd = ebm.T_x(ebm.x)
+conv_fd = rootfinding.converged
 
 # plot error convergence
 plt.close()
-plt.plot(errors)
-plt.plot(errors_fd)
+plt.plot(errors, label="Exact Jacobian")
+if conv_exact: 
+    marker = 'rx'
+    label = "convergence" 
+else: 
+    marker = 'ro'
+    label = "no convergence"
+plt.plot(len(errors), errors[-1], marker, label=label)
+plt.plot(errors_fd, label="Finite Difference Jacobian")
+if conv_fd: 
+    marker = 'rx'
+    label = "convergence" 
+else: 
+    marker = 'ro'
+    label = "no convergence"
+plt.plot(len(errors_fd), errors_fd[-1], marker, label=label)
 plt.title("Error convergence")
 plt.xlabel("Iteration")
 plt.ylabel("Error")
-plt.yscale("log")
+# plt.yscale("log")
+plt.legend()
 fn = output_dir / "error_convergence.png"
 plt.savefig(fn, dpi=500)
 print("Saved error convergence to:\n  ", fn)
@@ -81,12 +98,12 @@ stepsizes = np.logspace(-3, 7, 100)
 errors = []
 ebm.T_coeffs = np.zeros(n)
 ebm.T_coeffs[0] = initial_temperature
-_ = rootfinding.newtonRaphson(ebm) # find equilibrium solution
+_ = rootfinding.newtonRaphson(ebm)  # find equilibrium solution
 jacobian_exact = ebm.evaluate_derivative()
 print("Running finite difference jacobian approximation analysis...")
 for h in stepsizes:
     jacobian_fd = ebm.evaluate_derivative_finite_difference(h)
-    error = np.linalg.norm(jacobian_exact-jacobian_fd, ord='fro')
+    error = np.linalg.norm(jacobian_exact - jacobian_fd, ord=2)
     errors.append(error)
 
 plt.close()

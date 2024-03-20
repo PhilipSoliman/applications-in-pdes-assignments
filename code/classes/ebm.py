@@ -140,13 +140,12 @@ class EBM(NonLinearSystem):
         --------
         np.ndarray: matrix such that out[i,j] = (F(T(a_i + h))[j] - F(T)[j]) / h
         """
-        T_coeffs_plus_h = self.T_coeffs[:,None] * np.ones(
-            (self.n_polys, self.n_polys)
-        ) + h * np.eye(self.n_polys)
+        T_coeffs_plus_h = self.T_coeffs + h * np.eye(self.n_polys)
         T_plus_h = T_coeffs_plus_h @ self.legendre_polys
         integrand = (
-            self.energy_balance(T_plus_h) - self.energy_balance(self.T_eval())
-        ) / h
+            self.energy_balance(T_plus_h, T_coeffs_plus_h)
+            - self.energy_balance(self.T_eval())
+        ) / h  # [EBM(x, T(a + e_i*h)) - EBM(x, T)] / h
         test_function = self.legendre_polys
         return np.einsum("is,js->ijs", integrand, test_function) @ self.quad_weights
 
@@ -157,8 +156,8 @@ class EBM(NonLinearSystem):
         self.T_coeffs += update
 
     ######## Energy balance terms ########
-    def energy_balance(self, T: np.ndarray) -> np.ndarray:
-        return self.R_D() + self.R_A(self.quad_samples, T) - self.R_E(T)
+    def energy_balance(self, T: np.ndarray, T_coeffs: np.ndarray = None) -> np.ndarray:
+        return self.R_D(T_coeffs) + self.R_A(self.quad_samples, T) - self.R_E(T)
 
     def energy_balance_derivative(self, T: np.ndarray) -> np.ndarray:
         """
@@ -182,17 +181,11 @@ class EBM(NonLinearSystem):
 
     # solar radiation (R_A)
     def R_A(self, x: np.ndarray, T: np.ndarray) -> np.ndarray:
-        # return EBM.Q_solar(x) * (1 - EBM.albedo(T)) + self.mu
-        out = EBM.Q_solar(x) * (1 - EBM.albedo(T)) + self.mu
-        # return np.zeros_like(out)
-        return out
+        return EBM.Q_solar(x) * (1 - EBM.albedo(T)) + self.mu
 
     @staticmethod
     def dR_A(x: np.ndarray, T: np.ndarray) -> np.ndarray:
-        # return EBM.Q_solar(x) * EBM.dalbedo(T)
-        out = EBM.Q_solar(x) * EBM.dalbedo(T)
-        # return np.zeros_like(out)
-        return out
+        return EBM.Q_solar(x) * EBM.dalbedo(T)
 
     @staticmethod
     def Q_solar(x: np.ndarray) -> np.ndarray:
@@ -208,23 +201,17 @@ class EBM(NonLinearSystem):
     def dalbedo(T: np.ndarray) -> np.ndarray:
         return EBM.M * (EBM.a_2 - EBM.a_1) / (2 * np.cos(EBM.M * (T - EBM.T_star)) ** 2)
 
-    @staticmethod
     # Black body radiation (R_E)
+    @staticmethod
     def R_E(T: np.ndarray) -> np.ndarray:
-        # return EBM.epsilon_0 * EBM.sigma_0 * T**4
-        out = EBM.epsilon_0 * EBM.sigma_0 * T**4
-        # return np.zeros_like(out)
-        return out
+        return EBM.epsilon_0 * EBM.sigma_0 * T**4
 
     @staticmethod
     def dR_E(T: np.ndarray) -> np.ndarray:
-        # return 4 * EBM.epsilon_0 * EBM.sigma_0 * T**3
-        out = 4 * EBM.epsilon_0 * EBM.sigma_0 * T**3
-        # return np.zeros_like(out)
-        return out
+        return 4 * EBM.epsilon_0 * EBM.sigma_0 * T**3
 
     # dispersion & legendre polynomials
-    def R_D(self) -> np.ndarray:
+    def R_D(self, T_coeffs: np.ndarray = None) -> np.ndarray:
         """
         Evaluate the dispersion term using the coefficients and eigenvalues
         of the respective Legendre polynomials.
@@ -234,7 +221,9 @@ class EBM(NonLinearSystem):
         np.ndarray (m,): The dispersion term evaluated for the current T_coeffs
             and at the m quad_sample points.
         """
-        return (self.legendre_eigs / self.D * self.T_coeffs) @ self.legendre_polys
+        if T_coeffs is None:
+            T_coeffs = self.T_coeffs
+        return (self.legendre_eigs / self.D * T_coeffs) @ self.legendre_polys
 
     def dR_D(self) -> np.ndarray:
         """
