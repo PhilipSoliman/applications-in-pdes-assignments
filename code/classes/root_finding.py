@@ -9,27 +9,28 @@ class RootFinding:
         self.tolerance = tolerance
         self.maxiter = maxiter
         self.converged = False
+        self.output = False
 
     def newtonRaphson(
         self, NLS: NonLinearSystem, exact: bool = True, stepsize: float = 1e-6
     ) -> list:
         error = np.linalg.norm(NLS.evaluate())
-        errors = [error]
+        errors = []
         i = 0
         if exact:
-            print(f"Running Newton-Raphson with exact derivatives...")
+            self.print(f"Running Newton-Raphson with exact derivatives...")
         else:
-            print(
+            self.print(
                 f"Running Newton-Raphson with finite difference derivatives (h = {stepsize})..."
             )
         pbar = tqdm(desc="", total=self.maxiter, unit="NR update", miniters=5)
         while error > self.tolerance:
             pbar.set_description(
-                f"iteration: {i}, error: {errors[i]:.2e}, tolerance: {self.tolerance:.2e}, maxiter: {self.maxiter}"
+                f"iteration: {i}, error: {error:.2e}, tolerance: {self.tolerance:.2e}, maxiter: {self.maxiter}"
             )
             if i == self.maxiter:
                 pbar.close()
-                print(
+                self.print(
                     "Newton-Raphson method did not converge within the maximum number of iterations. Exiting..."
                 )
                 break
@@ -53,12 +54,16 @@ class RootFinding:
         if error <= self.tolerance:
             pbar.close()
             self.converged = True
-            print("Newton-Raphson converged.")
+            self.print("Newton-Raphson converged.")
 
         return errors
-    
+
     def broydensMethod() -> None:
         pass
 
     def arcLength() -> None:
         pass
+
+    def print(self, message: str) -> None:
+        if self.output:
+            print(message)

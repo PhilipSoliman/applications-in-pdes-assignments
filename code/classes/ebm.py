@@ -120,32 +120,40 @@ class EBM(NonLinearSystem):
 
     def evaluate_derivative(self) -> np.ndarray:
         """
-
         Returns:
         --------
-        np.ndarray: matrix such that out[i,j] = int_{-1}{1} [(lambda_j + dR_A(T) - dR_E(T)) * phi_j] * phi_i dx
+        np.ndarray: matrix such that out[i,j] = int_{-1}{1} [(lambda_j + dR_A(T) - dR_E(T))] * phi_j * phi_i dx
         """
         T = self.T_eval()
         integrand = self.energy_balance_derivative(T)
         test_function = self.legendre_polys
-        weak_form_derivative = np.einsum("js,is->ijs", integrand, test_function)
-        # return np.einsum("ijs,s->ij", weak_form_derivative, self.quad_weights)
+        weak_form_derivative = np.einsum("is,js->ijs", integrand, test_function)
         return weak_form_derivative @ self.quad_weights
 
-    def evaluate_derivative_finite_difference(self, h: float = 1e-6) -> np.ndarray:
+    def evaluate_derivative_finite_difference(
+        self, h: float = 1e-6, order: int = -1
+    ) -> np.ndarray:
         """
-        Evaluate the derivative of the non-linear system of equations using finite difference.
+        Evaluate the derivative of the non-linear system of equations using finite differences.
+
+        Args:
+        h (float); specifies step size for finite difference
+        !!!NI order (int); specifies the order of the finite difference method.
+            2 -> central difference
+            1 -> forward difference
+            -1 -> backward difference
 
         Returns:
         --------
         np.ndarray: matrix such that out[i,j] = (F(T(a_i + h))[j] - F(T)[j]) / h
         """
+        # TODO: implement other finite difference methods (backward, central difference, etc...)
         T_coeffs_plus_h = self.T_coeffs + h * np.eye(self.n_polys)
         T_plus_h = T_coeffs_plus_h @ self.legendre_polys
         integrand = (
             self.energy_balance(T_plus_h, T_coeffs_plus_h)
             - self.energy_balance(self.T_eval())
-        ) / h  # [EBM(x, T(a + e_i*h)) - EBM(x, T)] / h
+        ) / h  # [EBM(x, T(a + e_j*h)) - EBM(x, T)] / h
         test_function = self.legendre_polys
         return np.einsum("is,js->ijs", integrand, test_function) @ self.quad_weights
 
@@ -174,10 +182,11 @@ class EBM(NonLinearSystem):
         np.ndarray (n, m): The derivative of the energy balance terms evaluated at the given coefficients.
             m is the number of sample points and n is the number of Legendre polynomials.
         """
-        return (
-            self.dR_D()
-            + (self.dR_A(self.quad_samples, T) - self.dR_E(T)) * self.legendre_polys
-        )
+        diffusion_term = self.dR_D()
+        flux_terms = (
+            self.dR_A(self.quad_samples, T) - self.dR_E(T)
+        ) * self.legendre_polys
+        return diffusion_term + flux_terms
 
     # solar radiation (R_A)
     def R_A(self, x: np.ndarray, T: np.ndarray) -> np.ndarray:
@@ -185,7 +194,7 @@ class EBM(NonLinearSystem):
 
     @staticmethod
     def dR_A(x: np.ndarray, T: np.ndarray) -> np.ndarray:
-        return EBM.Q_solar(x) * EBM.dalbedo(T)
+        return -EBM.Q_solar(x) * EBM.dalbedo(T)
 
     @staticmethod
     def Q_solar(x: np.ndarray) -> np.ndarray:
@@ -199,7 +208,9 @@ class EBM(NonLinearSystem):
 
     @staticmethod
     def dalbedo(T: np.ndarray) -> np.ndarray:
-        return EBM.M * (EBM.a_2 - EBM.a_1) / (2 * np.cos(EBM.M * (T - EBM.T_star)) ** 2)
+        return (
+            EBM.M * (EBM.a_2 - EBM.a_1) / (2 * np.cosh(EBM.M * (T - EBM.T_star)) ** 2)
+        )
 
     # Black body radiation (R_E)
     @staticmethod
@@ -235,4 +246,4 @@ class EBM(NonLinearSystem):
         np.ndarray (n, m): The derivative of the dispersion term evaluated at the given coefficients.
             m is the number of sample points and n is the number of Legendre polynomials.
         """
-        return self.legendre_eigs[:, None] / self.D * self.legendre_polys
+        return (self.legendre_eigs[:, None] / self.D) * self.legendre_polys

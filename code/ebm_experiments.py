@@ -43,7 +43,7 @@ print("Saved initial guess for T to:\n  ", fn)
 
 ################### Newton-Raphson Method ####################
 rootfinding = RootFinding(maxiter=1000)
-
+rootfinding.output = True
 # run Newton-Raphson method
 errors = rootfinding.newtonRaphson(ebm)
 T_final_exact = ebm.T_x(ebm.x)
@@ -52,31 +52,51 @@ conv_exact = rootfinding.converged
 # run Newton-Raphson method with finite difference
 ebm.T_coeffs = np.zeros(n)
 ebm.T_coeffs[0] = initial_temperature
-errors_fd = rootfinding.newtonRaphson(ebm, exact=False, stepsize=1e3)
+errors_fd = rootfinding.newtonRaphson(ebm, exact=False, stepsize=1e-2)
 T_final_fd = ebm.T_x(ebm.x)
 conv_fd = rootfinding.converged
 
 # plot error convergence
 plt.close()
-plt.plot(errors, label="Exact Jacobian")
-if conv_exact: 
-    marker = 'rx'
-    label = "convergence" 
-else: 
-    marker = 'ro'
+plt.plot(np.arange(len(errors)), errors, label="Exact Jacobian", color="blue")
+if conv_exact:
+    marker = "x"
+    label = "convergence"
+else:
+    marker = "o"
     label = "no convergence"
-plt.plot(len(errors), errors[-1], marker, label=label)
-plt.plot(errors_fd, label="Finite Difference Jacobian")
-if conv_fd: 
-    marker = 'rx'
-    label = "convergence" 
-else: 
-    marker = 'ro'
+plt.plot(
+    len(errors) - 1,
+    errors[-1],
+    linestyle="None",
+    marker=marker,
+    label=label,
+    color="blue",
+)
+plt.plot(
+    np.arange(len(errors_fd)),
+    errors_fd,
+    label="Finite Difference Jacobian",
+    linestyle="--",
+    color="orange",
+)
+if conv_fd:
+    marker = "x"
+    label = "convergence"
+else:
+    marker = "o"
     label = "no convergence"
-plt.plot(len(errors_fd), errors_fd[-1], marker, label=label)
-plt.title("Error convergence")
+plt.plot(
+    len(errors_fd) - 1,
+    errors_fd[-1],
+    linestyle="None",
+    marker=marker,
+    label=label,
+    color="orange",
+)
+plt.title("Norm of non-linear system")
 plt.xlabel("Iteration")
-plt.ylabel("Error")
+plt.ylabel("$||F(T_k)||_2$")
 # plt.yscale("log")
 plt.legend()
 fn = output_dir / "error_convergence.png"
@@ -85,8 +105,14 @@ print("Saved error convergence to:\n  ", fn)
 
 # plot final solution
 plt.close()
-plt.plot(ebm.x, T_final_exact, label="Exact Jacobian")
-plt.plot(ebm.x, T_final_fd, label="Finite Difference Jacobian")
+plt.plot(ebm.x, T_final_exact, label="Exact Jacobian", color="blue")
+plt.plot(
+    ebm.x,
+    T_final_fd,
+    label="Finite Difference Jacobian",
+    linestyle="--",
+    color="orange",
+)
 plt.title("Final solution for T")
 plt.legend()
 fn = output_dir / "equilibrium_T.png"
@@ -101,18 +127,36 @@ ebm.T_coeffs[0] = initial_temperature
 _ = rootfinding.newtonRaphson(ebm)  # find equilibrium solution
 jacobian_exact = ebm.evaluate_derivative()
 print("Running finite difference jacobian approximation analysis...")
+jacobian_exact_nrm = np.linalg.norm(jacobian_exact, ord=2)
 for h in stepsizes:
     jacobian_fd = ebm.evaluate_derivative_finite_difference(h)
-    error = np.linalg.norm(jacobian_exact - jacobian_fd, ord=2)
+    error = np.linalg.norm(jacobian_exact - jacobian_fd, ord=2) / jacobian_exact_nrm
     errors.append(error)
 
 plt.close()
-plt.plot(stepsizes, errors)
-plt.xscale("log")
-plt.yscale("log")
-plt.title("Error in Jacobian approximation")
-plt.xlabel("Stepsize")
-plt.ylabel("Error")
+fig, ax = plt.subplots(layout="tight")
+ax.plot(stepsizes, errors)
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.set_title("Error in Jacobian approximation")
+ax.set_xlabel("Stepsize")
+ax.set_ylabel("$||J_{exact} - J_{FD}||_2 / ||J_{exact}||_2$")
+ax.tick_params(axis="y", labelcolor="blue")
+
+# check convergence of Newton-Raphson method using FD jacobian vs stepsize
+num_iterations = np.zeros_like(stepsizes)
+rootfinding.output = False
+for i, h in enumerate(stepsizes):
+    ebm.T_coeffs = np.zeros(n)
+    ebm.T_coeffs[0] = initial_temperature
+    errors = rootfinding.newtonRaphson(ebm, exact=False, stepsize=h)
+    num_iterations[i] = len(errors)
+
+secax_y = ax.twinx()
+secax_y.plot(stepsizes, num_iterations, color="red")
+secax_y.set_ylabel("Number of iterations")
+secax_y.tick_params(axis="y", labelcolor="red")
+
 fn = output_dir / "jacobian_approximation_error.png"
 plt.savefig(fn, dpi=500)
 print("Saved jacobian approximation error to:\n  ", fn)
