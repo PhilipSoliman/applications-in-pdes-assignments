@@ -17,5 +17,9 @@ class NonLinearSystem(ABC):
         pass
 
     @abstractmethod
+    def get_current_solution(self) -> np.ndarray:
+        pass
+    
+    @abstractmethod
     def update_solution(self, update) -> None:
         pass

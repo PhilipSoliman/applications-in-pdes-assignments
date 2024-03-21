@@ -99,6 +99,14 @@ class EBM(NonLinearSystem):
         )
         return self.T_coeffs @ legendre_polys_eval
 
+    def T_avg(self) -> float:
+        """
+        Returns the average temperature of the system.
+
+        T_avg = [int_{-1}^{1} T]/2 = dx [sum_i a_i * int_{-1}^{1}phi_i dx]/2
+        """
+        return self.T_coeffs @ self.legendre_polys @ self.quad_weights / 2
+
     ######## non-linear system of equations (override NLS abstract methods)########
     def evaluate(self) -> np.ndarray:
         """
@@ -156,6 +164,15 @@ class EBM(NonLinearSystem):
         ) / h  # [EBM(x, T(a + e_j*h)) - EBM(x, T)] / h
         test_function = self.legendre_polys
         return np.einsum("is,js->ijs", integrand, test_function) @ self.quad_weights
+
+    def get_current_solution(self) -> np.ndarray:
+        """
+        Returns:
+        --------
+        np.ndarray: The current solution of the non-linear system of equations.
+        A wrapper for the T_coeffs property used in e.g. rootFinding methods.
+        """
+        return self.T_coeffs
 
     def update_solution(self, update: np.ndarray) -> None:
         """
