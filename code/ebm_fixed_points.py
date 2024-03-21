@@ -6,157 +6,83 @@ pyutils.add_modules_to_path()
 from ebm import EBM
 from root_finding import RootFinding
 
-
 # set figure output directory
 root = pyutils.get_root()
 output_dir = root / "report" / "figures"
-print(f"Output directory:\n  {output_dir}")
 
 # set standard matplotlib style
 pyutils.set_style()
 
 ############### Computation parameters ####################
-n = 5  # number of Legendre polynomials
-number_of_quad_points = 2 * n  # number of quadrature points
+n_polys = 5  # number of Legendre polynomials
+n_quads = 2 * n_polys  # number of quadrature points
 grid_resolution = 100  # resolution of the grid
-initial_temperature = (
-    220  # 220  # initial guess for (T # follows from boundary conditions and delta = 0)
-)
-maxiter = 100  # maximum number of iterations for Newton-Raphson method
 
-############### Setup Non-linear System of Equations ####################
-ebm = EBM(n, number_of_quad_points, grid_resolution)
+############### Setup Non-linear System of Equations #####
+ebm = EBM(n_polys, n_quads, grid_resolution)
 
-# print("Problem constants:\n  ", end="")
-# pprint({k: v for k, v in ebm.__dict__.items()})
+############### Generating initial guesses for T #########
+initial_temperatures = np.linspace(150, 350, 100)
 
-print("Plotting initial guess for T...")
-ebm.T_coeffs[0] = initial_temperature
-T_initial = ebm.T_x(ebm.x)
-plt.close()
-plt.plot(ebm.x, T_initial, label="Initial guess")
-plt.title("Initial guess for T")
-plt.legend(fontsize=8)
-fn = output_dir / "initial_guess_T.png"
-plt.savefig(fn, dpi=500)
-print("Saved initial guess for T to:\n  ", fn)
-
-################### Newton-Raphson Method ####################
+############### find fixed points (using NR and Broyden) #
 rootfinding = RootFinding(maxiter=1000)
-rootfinding.output = True
-# run Newton-Raphson method
-errors = rootfinding.newtonRaphson(ebm)
-T_final_exact = ebm.T_x(ebm.x)
-conv_exact = rootfinding.converged
-
-# run Newton-Raphson method with finite difference
-ebm.T_coeffs = np.zeros(n)
-ebm.T_coeffs[0] = initial_temperature
-errors_fd = rootfinding.newtonRaphson(ebm, exact=False, stepsize=1e-2)
-T_final_fd = ebm.T_x(ebm.x)
-conv_fd = rootfinding.converged
-
-# plot error convergence
-plt.close()
-plt.plot(np.arange(len(errors)), errors, label="Exact Jacobian", color="blue")
-if conv_exact:
-    marker = "x"
-    label = "convergence"
-else:
-    marker = "o"
-    label = "no convergence"
-plt.plot(
-    len(errors) - 1,
-    errors[-1],
-    linestyle="None",
-    marker=marker,
-    label=label,
-    color="blue",
-)
-plt.plot(
-    np.arange(len(errors_fd)),
-    errors_fd,
-    label="Finite Difference Jacobian",
-    linestyle="--",
-    color="orange",
-)
-if conv_fd:
-    marker = "x"
-    label = "convergence"
-else:
-    marker = "o"
-    label = "no convergence"
-plt.plot(
-    len(errors_fd) - 1,
-    errors_fd[-1],
-    linestyle="None",
-    marker=marker,
-    label=label,
-    color="orange",
-)
-plt.title("Norm of non-linear system")
-plt.xlabel("Iteration")
-plt.ylabel("$||F(T_k)||_2$")
-# plt.yscale("log")
-plt.legend()
-fn = output_dir / "error_convergence.png"
-plt.savefig(fn, dpi=500)
-print("Saved error convergence to:\n  ", fn)
-
-# plot final solution
-plt.close()
-plt.plot(ebm.x, T_final_exact, label="Exact Jacobian", color="blue")
-plt.plot(
-    ebm.x,
-    T_final_fd,
-    label="Finite Difference Jacobian",
-    linestyle="--",
-    color="orange",
-)
-plt.title("Final solution for T")
-plt.legend()
-fn = output_dir / "equilibrium_T.png"
-plt.savefig(fn, dpi=500)
-print("Saved equilibrium T to:\n  ", fn)
-
-##################### exact vs finite difference jacobian #####################
-stepsizes = np.logspace(-3, 7, 100)
-errors = []
-ebm.T_coeffs = np.zeros(n)
-ebm.T_coeffs[0] = initial_temperature
-_ = rootfinding.newtonRaphson(ebm)  # find equilibrium solution
-jacobian_exact = ebm.evaluate_derivative()
-print("Running finite difference jacobian approximation analysis...")
-jacobian_exact_nrm = np.linalg.norm(jacobian_exact, ord=2)
-for h in stepsizes:
-    jacobian_fd = ebm.evaluate_derivative_finite_difference(h)
-    error = np.linalg.norm(jacobian_exact - jacobian_fd, ord=2) / jacobian_exact_nrm
-    errors.append(error)
-
-plt.close()
-fig, ax = plt.subplots(layout="tight")
-ax.plot(stepsizes, errors)
-ax.set_xscale("log")
-ax.set_yscale("log")
-ax.set_title("Error in Jacobian approximation")
-ax.set_xlabel("Stepsize")
-ax.set_ylabel("$||J_{exact} - J_{FD}||_2 / ||J_{exact}||_2$")
-ax.tick_params(axis="y", labelcolor="blue")
-
-# check convergence of Newton-Raphson method using FD jacobian vs stepsize
-num_iterations = np.zeros_like(stepsizes)
 rootfinding.output = False
-for i, h in enumerate(stepsizes):
-    ebm.T_coeffs = np.zeros(n)
+fig, [ax_nr, ax_br] = plt.subplots(1, 2, figsize=(8, 6), sharex=True, sharey=True)
+
+# Newton-Raphson
+fixed_points = np.zeros(len(initial_temperatures))
+iterations = np.zeros(len(initial_temperatures))
+for i, initial_temperature in enumerate(initial_temperatures):
+    ebm.T_coeffs = np.zeros(n_polys)
     ebm.T_coeffs[0] = initial_temperature
-    errors = rootfinding.newtonRaphson(ebm, exact=False, stepsize=h)
-    num_iterations[i] = len(errors)
+    errors = rootfinding.newtonRaphson(ebm)
+    if rootfinding.converged:
+        fixed_points[i] = ebm.T_avg()
+        if ebm.T_avg() < 0:
+            fixed_points[i] = np.nan
+            print("negative temperature encountered")
+    else:
+        fixed_points[i] = np.nan
+    iterations[i] = len(errors)
 
-secax_y = ax.twinx()
-secax_y.plot(stepsizes, num_iterations, color="red")
-secax_y.set_ylabel("Number of iterations")
-secax_y.tick_params(axis="y", labelcolor="red")
+ax_nr.scatter(
+    initial_temperatures,
+    fixed_points,
+    c=(np.max(iterations) - iterations) ** 2,
+    cmap="Oranges_r",
+    s=100,
+    marker="o",
+    alpha=0.8,
+)
+ax_nr.set_xlabel("$T_0$")
+ax_nr.set_ylabel(r"$\bar{T}$")
+ax_nr.set_title("NR")
 
-fn = output_dir / "jacobian_approximation_error.png"
-plt.savefig(fn, dpi=500)
-print("Saved jacobian approximation error to:\n  ", fn)
+# Broyden's method
+fixed_points = np.zeros(len(initial_temperatures))
+iterations = np.zeros(len(initial_temperatures))
+for i, initial_temperature in enumerate(initial_temperatures):
+    ebm.T_coeffs = np.zeros(n_polys)
+    ebm.T_coeffs[0] = initial_temperature
+    errors = rootfinding.broydensMethod(ebm)
+    if rootfinding.converged:
+        fixed_points[i] = ebm.T_avg()
+    else:
+        fixed_points[i] = np.nan
+    iterations[i] = len(errors)
+
+# plot fixed points
+ax_br.scatter(
+    initial_temperatures,
+    fixed_points,
+    c=(np.max(iterations) - iterations) ** 2,
+    cmap="Blues_r",
+    s=100,
+    marker="o",
+    alpha=0.8,
+)
+ax_br.set_title("Broydens")
+fig.tight_layout()
+fig.suptitle("Fixed points of the EBM", fontsize=16)
+fn = output_dir / "fixed_points.png"
+fig.savefig(fn, dpi=500)

@@ -1,7 +1,6 @@
 import numpy as np
 from tqdm import tqdm
 from non_linear_system import NonLinearSystem
-from typing import Callable
 
 
 class RootFinding:
@@ -13,6 +12,7 @@ class RootFinding:
         self.output = False
         self.method = None
         self.pbar = None
+        self.singular_matrix = False
 
     # General method for finding roots
     def findRoot(
@@ -23,12 +23,7 @@ class RootFinding:
         errors = []
         i = 0
         self.converged = False
-        if exact:
-            self.print(f"Running {self.method} with exact derivatives...")
-        else:
-            self.print(
-                f"Running {self.method} with finite difference derivatives (h = {stepsize})..."
-            )
+        self.print(f"Running {self.method}...")
         self.instantiate_pbar(self.maxiter)
         while error > self.tolerance:
             self.update_pbar(i, error)
@@ -47,6 +42,12 @@ class RootFinding:
                 F, B = self.broydensMethodUpdate(nls, F, B)
             else:
                 raise ValueError("Method not specified and/or implemented.")
+
+            # check for singular matrix
+            if self.singular_matrix:
+                self.close_pbar()
+                self.print(f"Singular matrix encountered at iteration {i}. Exiting...")
+                break
 
             # calculate current error
             error = np.linalg.norm(F)
@@ -77,11 +78,15 @@ class RootFinding:
 
     def broydensMethodUpdate(
         self, nls: NonLinearSystem, F: np.ndarray, B: np.ndarray
-    ) -> np.ndarray:
-        update = -np.linalg.solve(B, F)
+    ) -> tuple[np.ndarray]:
+        try:
+            update = -np.linalg.solve(B, F)
+        except np.linalg.LinAlgError:
+            self.singular_matrix = True
+            return F, B
         nls.update_solution(update)  # TODO: check if solution is implicitly updated
         F = nls.evaluate()
-        B += F @ update.T / (update.T @ update)
+        B += np.outer(F, update) / (update.T @ update)
         return F, B
 
     # Method handles
@@ -98,9 +103,9 @@ class RootFinding:
         return self.findRoot(NLS, exact, stepsize)
 
     # Control output
-    def print(self, message: str) -> None:
+    def print(self, message: str, **kwargs) -> None:
         if self.output:
-            print(message)
+            print(message, **kwargs)
 
     def instantiate_pbar(self, maxiter: int) -> None:
         if self.output:
