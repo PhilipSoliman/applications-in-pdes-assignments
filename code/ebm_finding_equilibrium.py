@@ -122,7 +122,7 @@ plt.savefig(fn, dpi=500)
 print("Saved equilibrium T to:\n  ", fn)
 
 ##################### exact vs finite difference jacobian #####################
-stepsizes = np.logspace(-3, 7, 100)
+stepsizes = np.logspace(-9, 1, 100)
 errors = []
 ebm.T_coeffs = np.zeros(n)
 ebm.T_coeffs[0] = initial_temperature
