@@ -28,7 +28,7 @@ ebm.T_coeffs[0] = initial_temperature
 parameter_name = "mu"  # parameter to be continued
 method = "arclength"  # continuation method
 stepsize = 0.001  # stepsize (needs to be small, why?)
-tune_factor = 0.1  # tune factor (needs to be small, why?)
+tune_factor = 0.01  # tune factor (needs to be small, why?)
 tolerance = 1e-5  # tolerance
 maxiter = 100  # maximum number of iterations
 
