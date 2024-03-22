@@ -127,23 +127,33 @@ class Continuation:
             dF_sol = nls.evaluate_derivative()
 
             # intermediate variables
-            z1 = np.linalg.solve(dF_sol, -self.F)
-            z2 = np.linalg.solve(dF_sol, dF_param)
+            # z1 = np.linalg.solve(dF_sol, -self.F)
+            # z2 = np.linalg.solve(dF_sol, dF_param)
 
             # parametrisation p and its derivatives
+            dsol_ds = (correctorSolution - solution) / stepsize
+            dparam_ds = (correctorParameter - parameter) / stepsize
             p = (
-                self.tune_factor * np.sum((correctorSolution - solution) ** 2)
-                + (1 - self.tune_factor) * (correctorParameter - parameter) ** 2
+                self.tune_factor * np.sum((correctorSolution - solution) * dsol_ds)
+                + (1 - self.tune_factor) * (correctorParameter - parameter) * dparam_ds
                 - stepsize**2
             )
-            dp_dsol = 2 * self.tune_factor * (correctorSolution - solution)
-            dp_dparam = 2 * (1 - self.tune_factor) * (correctorParameter - parameter)
+            dp_dsol = 2 * self.tune_factor * dsol_ds
+            dp_dparam = 2 * (1 - self.tune_factor) * dparam_ds
+
+            # extended system
+            F_ext = np.append(self.F, p)
+            dF_ext = np.vstack(
+                (
+                    np.hstack((dF_sol, dF_param[:, np.newaxis])),
+                    np.hstack((dp_dsol, dp_dparam)),
+                )
+            )
 
             # corrector step (basically a Newton-Raphson step on extended system)
-            correctorStepParameter = (-p - dp_dsol.dot(z1)) / (
-                dp_dparam - dp_dsol.dot(z2)
-            )
-            correctorStepSolution = z1 - z2 * correctorStepParameter
+            correctorStep = -np.linalg.solve(dF_ext, F_ext)
+            correctorStepSolution = correctorStep[:-1]
+            correctorStepParameter = correctorStep[-1]
 
             correctorSolution += correctorStepSolution
             correctorParameter += correctorStepParameter
@@ -153,7 +163,6 @@ class Continuation:
             setattr(nls, self.parameterName, correctorParameter)
 
             # update error
-            correctorStep = np.append(correctorStepSolution, correctorStepParameter)
             error = np.linalg.norm(correctorStep)
             errors.append(error)
 
