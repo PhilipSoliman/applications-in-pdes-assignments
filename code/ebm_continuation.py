@@ -28,15 +28,14 @@ continuation.output = True
 parameter_name = "mu"  # parameter to be continued (should correspond to an attribute of the EBM object)
 parameter_range = (0, 100)  # range of the parametervalues of interest
 stepsize = 0.1  # stepsize (needs to be small, why?)
-tune_factor = 0.0005  # tune factor (needs to be small, why?)
-maxContinuations = 1000  # maximum number of continuations
-initial_temperature = 200.0  # initial temperature
+tune_factor = 0.001  # tune factor (needs to be small, why?)
+maxContinuations = 5000  # maximum number of continuations
 
 ############### Continuation (first test) #################
-ebm.T_coeffs[0] = initial_temperature
+ebm.T_coeffs[0] = 220
 print("Performing continuation (once)...")
 rootfinding = RootFinding(tolerance, maxiter)
-rootfinding.output = False
+rootfinding.output = True
 rootfinding.newtonRaphson(ebm)
 print(f"Initial solution:\n\tcoeffs = {ebm.T_coeffs}\n\taverage = {ebm.T_avg()}")
 
@@ -44,43 +43,38 @@ errors = continuation.arclength(ebm, parameter_name, stepsize, tune_factor)
 print(f"Continuation solution:\n\tcoeffs = {ebm.T_coeffs}\n\taverage = {ebm.T_avg()}")
 
 ############### Continuation (loop) ##########################
-print("Performing continuation (loop)...")
-ebm.mu = parameter_range[0]
-rootfinding = RootFinding(tolerance, maxiter)
-ebm.T_coeffs = np.zeros(n_polys)
-ebm.T_coeffs[0] = initial_temperature
-rootfinding.output = False
-rootfinding.newtonRaphson(ebm)
-
-# TODO: perform continuation for a few initial temperatures
-# initial_temperatures = np.linspace(200, 300, 5)
+print("Building bifurcation diagram (continuation loop)...")
 fig, ax = plt.subplots()
+initial_temperatures = [200, 276, 400]
+for T0 in initial_temperatures:
 
-# for T0 in initial_temperatures:
-#     ebm.T_coeffs = np.zeros(n_polys)
-#     ebm.T_coeffs[0] = T0
-#     # initial root
-#     rootfinding.newtonRaphson(ebm)
-#     T_avgs, mus, stableBranch = continuation.arclengthLoop(
-#         ebm, parameter_name, stepsize, tune_factor, parameter_range, maxContinuations
-#     )
-#     mus = np.array(mus)
-#     T_avgs = np.array(T_avgs)
-#     stableBranch = np.array(stableBranch)
+    # initial guess
+    ebm.mu = parameter_range[0]
+    ebm.T_coeffs = np.zeros(n_polys)
+    ebm.T_coeffs[0] = T0
+    print(f"Initial temperature: {T0}", end=" ")
 
-#     # plot results
-#     ax.plot(mus[stableBranch], T_avgs[stableBranch], "g-")
-#     ax.plot(mus[~stableBranch], T_avgs[~stableBranch], "r--")
-ebm.T_coeffs = np.zeros(n_polys)
-ebm.T_coeffs[0] = initial_temperature
-T_avgs, mus, stableBranch = continuation.arclengthLoop(
-    ebm, parameter_name, stepsize, tune_factor, parameter_range, maxContinuations
-)
-mus = np.array(mus)
-T_avgs = np.array(T_avgs)
-stableBranch = np.array(stableBranch)
-plt.plot(mus[stableBranch], T_avgs[stableBranch], "g-")
-plt.plot(mus[~stableBranch], T_avgs[~stableBranch], "r--")
+    # find initial solution
+    rootfinding.newtonRaphson(ebm)
+
+    # perform continuation
+    T_avgs, mus, stableBranch = continuation.arclengthLoop(
+        ebm,
+        parameter_name,
+        stepsize,
+        tune_factor,
+        parameter_range,
+        maxContinuations,
+    )
+
+    # plot results
+    mus = np.array(mus)
+    T_avgs = np.array(T_avgs)
+    stableBranch = np.array(stableBranch)
+    ax.plot(mus[stableBranch], T_avgs[stableBranch], "g-")
+    ax.plot(mus[~stableBranch], T_avgs[~stableBranch], "r--")
+
+
 ax.set_xlabel(r"$\mu$")
 ax.set_ylabel(r"$\bar{T}$")
 ax.set_title("Continuation of the temperature profile")
