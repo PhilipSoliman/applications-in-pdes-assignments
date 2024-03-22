@@ -17,13 +17,17 @@ class Continuation:
     def __init__(self, tolerance=1e-5, maxiter: int = 100) -> None:
         self.tolerance = tolerance
         self.maxiter = maxiter
+        self.maxRetries = 3
         self.convergence = False
         self.setDefaultAttributes()
+        self.output = False
 
     def setDefaultAttributes(self) -> None:
         self.parameterName = ""
         self.stepsize = 0.0
         self.tune_factor = 0.0
+        self.stableBranch = None
+        self.remainingRetries = 10
 
     # method handles
     def arclength(
@@ -45,21 +49,41 @@ class Continuation:
         self.method = "ARC"
         self.tune_factor = tune_factor
         self.stepsize = stepsize
-        return self.execute(nls)
+        return self.execute(nls, stepsize)
 
     # main method
-    def execute(self, nls: NonLinearSystem) -> None:
-        self.converged = False
+    def execute(self, nls: NonLinearSystem, stepsize: float) -> None:
+        self.convergence = False
 
         if self.method == "ARC":
-            errors = self.arclengthAlgorithm(nls, self.stepsize, self.tolerance)
+            errors = self.arclengthAlgorithm(nls, stepsize, self.tolerance)
         else:
             raise ValueError("Method not specified and/or implemented.")
 
-        if not self.convergence:
-            print(
-                f"{self.method} continuation did not converge within the maximum number of iterations. Exiting..."
-            )
+        if self.convergence:
+            self.stableBranch = Continuation.checkStability(nls)
+            self.print(f"{self.method} continuation converged.")
+        else:
+            self.remainingRetries -= 1
+            if self.remainingRetries > 0:  # refinement
+                self.print(
+                    f"{self.method} continuation did not converge within the maximum number of iterations. Retrying with smaller stepsize :{self.stepsize:.2e}..."
+                )
+                self.stepsize /= 10
+                self.execute(nls, self.stepsize)
+            else:  # restart by finding a new root
+                self.print(
+                    f"{self.method} continuation did not converge within the maximum number of retries. finding new root..."
+                )
+                rootfinding = RootFinding(self.tolerance, self.maxiter)
+                rootfinding.output = self.output
+                rootfinding.newtonRaphson(nls)
+
+                # reset stepsize & retries
+                self.stepsize *= 10 ** (self.maxRetries - self.remainingRetries)
+                self.remainingRetries = 10
+
+                self.execute(nls, self.stepsize)
 
         self.setDefaultAttributes()
 
@@ -156,3 +180,16 @@ class Continuation:
         # reset parameter
         setattr(nls, self.parameterName, parameter)
         return dF_param
+
+    @staticmethod
+    def checkStability(nls: NonLinearSystem) -> None:
+        """
+        Check the stability of the current solution.
+        """
+        jacobian = nls.evaluate_derivative()
+        eigvals = np.linalg.eigvals(jacobian)
+        return np.all(np.real(eigvals) < 0)
+
+    def print(self, msg: str, **kwargs) -> None:
+        if self.output:
+            print(msg, **kwargs)
