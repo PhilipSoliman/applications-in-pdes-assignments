@@ -21,6 +21,8 @@ class Continuation:
         self.convergence = False
         self.setDefaultAttributes()
         self.output = False
+        self.continuedSolution = None
+        self.previousSolution = None
 
     def setDefaultAttributes(self) -> None:
         self.parameterName = ""
@@ -52,10 +54,11 @@ class Continuation:
         return self.continuation(nls, stepsize)
 
     def continuation(self, nls: NonLinearSystem, stepsize: float) -> None:
-        """ "
+        """
         performs single continuation step using the specified method.
         """
         self.convergence = False
+        self.previousSolution = np.append(nls.get_current_solution(), nls.mu)
 
         if self.method == "ARC":
             errors = self.arclengthAlgorithm(nls, stepsize, self.tolerance)
@@ -73,11 +76,10 @@ class Continuation:
                 )
                 self.stepsize /= 10
                 self.continuation(nls, self.stepsize)
-            else:  
+            else:
                 self.print(
                     f"{self.method} continuation did not converge within the maximum number of retries. Exiting..."
                 )
-                # self.continuation(nls, self.stepsize)
 
         return errors
 
@@ -137,23 +139,35 @@ class Continuation:
 
             if not self.convergence:
                 self.print(f"Continuation did not converge after {i} steps. Exiting...")
-                return T_avgs, mus, stableBranch
+                break
 
             if i == self.maxContinuations:
                 self.print(
                     f"Maximum number of continuations reached ({self.maxContinuations}). Exiting..."
                 )
-                return T_avgs, mus, stableBranch
+                break
 
             if nls.mu > self.parameterRange[1]:
                 self.print(
                     f"Parameter range reached ({self.parameterName} = {self.parameterRange[1]}). Exiting..."
                 )
-                return T_avgs, mus, stableBranch
+                break
 
             if self.checkFold(nls):
                 self.print("Fold detected. Exiting...")
-                return T_avgs, mus, stableBranch
+                break
+
+            # if (
+            #     np.linalg.norm(
+            #         (self.previousSolution - self.continuedSolution)
+            #         / self.previousSolution
+            #     )
+            #     < 1e-2 and self.previousSolution is not None
+            # ):
+            #     print("Encountered old branch. Exiting...")
+            #     break
+
+        return T_avgs, mus, stableBranch
 
     # arclength method
     def arclengthAlgorithm(
@@ -232,6 +246,7 @@ class Continuation:
 
         if error <= tolerance:
             self.convergence = True
+            self.continuedSolution = np.append(correctorSolution, correctorParameter)
         else:  # reset to previous solution
             nls.set_current_solution(solution)
             setattr(nls, self.parameterName, parameter)
