@@ -174,6 +174,13 @@ class EBM(NonLinearSystem):
         """
         return self.T_coeffs
 
+    def set_current_solution(self, solution: np.ndarray) -> None:
+        """
+        Set the current solution of the non-linear system of equations.
+        A wrapper for the T_coeffs property used in e.g. rootFinding methods.
+        """
+        self.T_coeffs = solution
+
     def update_solution(self, update: np.ndarray) -> None:
         """
         Add the given update to current solution.
