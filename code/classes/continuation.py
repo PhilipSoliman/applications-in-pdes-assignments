@@ -25,7 +25,7 @@ class Continuation:
     def setDefaultAttributes(self) -> None:
         self.parameterName = ""
         self.stepsize = 0.0
-        self.tune_factor = 0.0
+        self.tuneFactor = 0.0
         self.stableBranch = None
         self.remainingRetries = 10
 
@@ -35,7 +35,7 @@ class Continuation:
         nls: NonLinearSystem,
         parameterName: str,
         stepsize: float,
-        tune_factor: float = 1.0,
+        tuneFactor: float = 1.0,
     ) -> np.ndarray:
         """
         Perform continuation using the arclength method. Calls main method
@@ -47,12 +47,14 @@ class Continuation:
             )
         self.parameterName = parameterName
         self.method = "ARC"
-        self.tune_factor = tune_factor
+        self.tuneFactor = tuneFactor
         self.stepsize = stepsize
-        return self.execute(nls, stepsize)
+        return self.continuation(nls, stepsize)
 
-    # main method
-    def execute(self, nls: NonLinearSystem, stepsize: float) -> None:
+    def continuation(self, nls: NonLinearSystem, stepsize: float) -> None:
+        """ "
+        performs single continuation step using the specified method.
+        """
         self.convergence = False
 
         if self.method == "ARC":
@@ -61,7 +63,7 @@ class Continuation:
             raise ValueError("Method not specified and/or implemented.")
 
         if self.convergence:
-            self.stableBranch = Continuation.checkStability(nls)
+            self.stableBranch = self.checkStability(nls)
             self.print(f"{self.method} continuation converged.")
         else:
             self.remainingRetries -= 1
@@ -70,24 +72,88 @@ class Continuation:
                     f"{self.method} continuation did not converge within the maximum number of iterations. Retrying with smaller stepsize :{self.stepsize:.2e}..."
                 )
                 self.stepsize /= 10
-                self.execute(nls, self.stepsize)
-            else:  # restart by finding a new root
+                self.continuation(nls, self.stepsize)
+            else:  
                 self.print(
-                    f"{self.method} continuation did not converge within the maximum number of retries. finding new root..."
+                    f"{self.method} continuation did not converge within the maximum number of retries. Exiting..."
                 )
-                rootfinding = RootFinding(self.tolerance, self.maxiter)
-                rootfinding.output = self.output
-                rootfinding.newtonRaphson(nls)
-
-                # reset stepsize & retries
-                self.stepsize *= 10 ** (self.maxRetries - self.remainingRetries)
-                self.remainingRetries = 10
-
-                self.execute(nls, self.stepsize)
-
-        self.setDefaultAttributes()
+                # self.continuation(nls, self.stepsize)
 
         return errors
+
+    # automatic continuation loop methods
+    def arclengthLoop(
+        self,
+        nls: NonLinearSystem,
+        parameterName: str,
+        stepsize: float,
+        tuneFactor: float,
+        parameterRange: tuple,
+        maxContinuations: int,
+    ) -> None:
+        if not hasattr(nls, parameterName):
+            raise ValueError(
+                f"Parameter attribute {parameterName} not found in given NonLinearSystem."
+            )
+        self.parameterName = parameterName
+        self.method = "ARC"
+        self.tuneFactor = tuneFactor
+        self.stepsize = stepsize
+        self.parameterRange = parameterRange
+        self.maxContinuations = maxContinuations
+        return self.continuationLoop(nls)
+
+    def continuationLoop(self, nls: NonLinearSystem) -> None:
+        """
+        Perform a continuation loop on the given NonLinearSystem object.
+        Aim is to find all branches of solutions in the given parameter range.
+
+        Idea:
+        - perform continuation for the given initial solution
+        - check if lowest (highest) parameter value still in range
+        - if not, exit
+        - if yes, check if solution is stable
+        - if yes, continue
+        - if no, find new root and perform continuation (restart using recursive call)
+            - stop when encountering already found branch
+        - repeat until maxContinuations reached
+        """
+        i = 0
+        T_avgs = []
+        mus = []
+        stableBranch = []
+        while True:
+            if self.method == "ARC":
+                self.arclength(nls, self.parameterName, self.stepsize, self.tuneFactor)
+            else:
+                raise ValueError("Method not specified and/or implemented.")
+            T_avgs.append(nls.T_avg())
+            mus.append(nls.mu)
+            stableBranch.append(self.stableBranch)  # calculates eigenvalues
+
+            i += 1
+
+            self.print(f"Continuation step {i}: mu = {nls.mu}, T_avg = {nls.T_avg()}")
+
+            if not self.convergence:
+                self.print(f"Continuation did not converge after {i} steps. Exiting...")
+                return T_avgs, mus, stableBranch
+
+            if i == self.maxContinuations:
+                self.print(
+                    f"Maximum number of continuations reached ({self.maxContinuations}). Exiting..."
+                )
+                return T_avgs, mus, stableBranch
+
+            if nls.mu > self.parameterRange[1]:
+                self.print(
+                    f"Parameter range reached ({self.parameterName} = {self.parameterRange[1]}). Exiting..."
+                )
+                return T_avgs, mus, stableBranch
+
+            if self.checkFold(nls):
+                self.print("Fold detected. Exiting...")
+                return T_avgs, mus, stableBranch
 
     # arclength method
     def arclengthAlgorithm(
@@ -101,7 +167,7 @@ class Continuation:
         dF_sol = nls.evaluate_derivative()
 
         dsol_dparam = -np.linalg.solve(dF_sol, dF_param)
-        dparam_ds = 1 / np.sqrt(1 + self.tune_factor * np.sum(dsol_dparam**2))
+        dparam_ds = 1 / np.sqrt(1 + self.tuneFactor * np.sum(dsol_dparam**2))
         dsol_ds = dsol_dparam * dparam_ds
 
         predictorSolution = solution + stepsize * dsol_ds
@@ -126,20 +192,16 @@ class Continuation:
             dF_param = self.derivativeParam(nls, parameter, h)
             dF_sol = nls.evaluate_derivative()
 
-            # intermediate variables
-            # z1 = np.linalg.solve(dF_sol, -self.F)
-            # z2 = np.linalg.solve(dF_sol, dF_param)
-
             # parametrisation p and its derivatives
             dsol_ds = (correctorSolution - solution) / stepsize
             dparam_ds = (correctorParameter - parameter) / stepsize
             p = (
-                self.tune_factor * np.sum((correctorSolution - solution) * dsol_ds)
-                + (1 - self.tune_factor) * (correctorParameter - parameter) * dparam_ds
-                - stepsize**2
+                self.tuneFactor * np.sum((correctorSolution - solution) * dsol_ds)
+                + (1 - self.tuneFactor) * (correctorParameter - parameter) * dparam_ds
+                - stepsize
             )
-            dp_dsol = 2 * self.tune_factor * dsol_ds
-            dp_dparam = 2 * (1 - self.tune_factor) * dparam_ds
+            dp_dsol = 2 * self.tuneFactor * dsol_ds
+            dp_dparam = 2 * (1 - self.tuneFactor) * dparam_ds
 
             # extended system
             F_ext = np.append(self.F, p)
@@ -190,14 +252,24 @@ class Continuation:
         setattr(nls, self.parameterName, parameter)
         return dF_param
 
-    @staticmethod
-    def checkStability(nls: NonLinearSystem) -> None:
+    def checkStability(self, nls: NonLinearSystem) -> None:
         """
         Check the stability of the current solution.
         """
         jacobian = nls.evaluate_derivative()
-        eigvals = np.linalg.eigvals(jacobian)
-        return np.all(np.real(eigvals) < 0)
+        self.eigvals = np.linalg.eigvals(jacobian)
+        return np.all(np.real(self.eigvals) < 0)
+
+    @staticmethod
+    def checkFold(nls: NonLinearSystem) -> None:
+        """
+        Check if a fold bifurcation is encountered.
+        """
+        jacobian = nls.evaluate_derivative()
+        if np.linalg.matrix_rank(jacobian) < nls.n_polys:
+            return True
+        else:
+            return False
 
     def print(self, msg: str, **kwargs) -> None:
         if self.output:
