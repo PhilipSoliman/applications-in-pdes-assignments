@@ -45,11 +45,16 @@
     equation for the heat dispersion vanishes at the boundary and we are left with a zeroth order differential equation 
     for which we simply cannot satisfy, one let alone two, boundary conditions.
 
-    The remedies for this are to either give $delta$ a small positive value, or to require that there is no
-    dispersion of energy to and from the poles
+    Hence we must resort to a more basic requirement. Namely, that there exists an equilibrium temperature $T_0$ at the poles,
     \begin{align*}
-        \left.R_D\right|_{x = \pm 1} = 0.
+        &\left.F(T(x, t))\right|_{x=\pm 1} = 0 \forall t > 0,\\
+        &\implies \left.R_D\right|_{x=\pm 1} = -(R_A - R_E).
     \end{align*}
+    Assuming we use the given expansion of T in terms of legendre polynomials, we can write the above Assignment
+    \begin{align*}
+        \left.\frac{d T}{dt}\right|_{x=\pm 1} &= \sum_{n=0}^{\infty} \left.\frac{d \phi_n}{dt}\right|_{x=\pm 1} P_n(x) = -(R_A - R_E).
+    \end{align*}
+
 
 \subsection{Embedding}
     See the end of section 4.4 in the book on how to construct possible embeddings.
