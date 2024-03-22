@@ -14,7 +14,8 @@ class Continuation:
     - arclength (ARC)
     """
 
-    def __init__(self, maxiter: int) -> None:
+    def __init__(self, tolerance=1e-5, maxiter: int = 100) -> None:
+        self.tolerance = tolerance
         self.maxiter = maxiter
         self.convergence = False
         self.setDefaultAttributes()
@@ -22,8 +23,7 @@ class Continuation:
     def setDefaultAttributes(self) -> None:
         self.parameterName = ""
         self.stepsize = 0.0
-        self.tune_factor = 1.0
-        self.tolerance = 1e-5
+        self.tune_factor = 0.0
 
     # method handles
     def arclength(
@@ -32,7 +32,6 @@ class Continuation:
         parameterName: str,
         stepsize: float,
         tune_factor: float = 1.0,
-        tolerance: float = 1e-5,
     ) -> np.ndarray:
         """
         Perform continuation using the arclength method. Calls main method
@@ -46,7 +45,6 @@ class Continuation:
         self.method = "ARC"
         self.tune_factor = tune_factor
         self.stepsize = stepsize
-        self.tolerance = tolerance
         return self.execute(nls)
 
     # main method
@@ -117,7 +115,7 @@ class Continuation:
             dp_dsol = 2 * self.tune_factor * (correctorSolution - solution)
             dp_dparam = 2 * (1 - self.tune_factor) * (correctorParameter - parameter)
 
-            # corrector step
+            # corrector step (basically a Newton-Raphson step on extended system)
             correctorStepParameter = (-p - dp_dsol.dot(z1)) / (
                 dp_dparam - dp_dsol.dot(z2)
             )

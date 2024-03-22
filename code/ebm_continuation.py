@@ -18,28 +18,31 @@ pyutils.set_style()
 n_polys = 5  # number of Legendre polynomials
 n_quads = 2 * n_polys  # number of quadrature points
 grid_resolution = 100  # resolution of the grid
-initial_temperature = 225.0  # initial temperature
+initial_temperature = 220.0  # initial temperature
 
 ############### Setup Non-linear System of Equations #####
 ebm = EBM(n_polys, n_quads, grid_resolution)
+ebm.T_coeffs[0] = initial_temperature
 
 ############### Continuation parameters ##################
-maxiter = 100  # maximum number of iterations
 parameter_name = "mu"  # parameter to be continued
 method = "arclength"  # continuation method
-stepsize = 0.1  # stepsize
-tune_factor = 0.5  # tune factor
+stepsize = 0.001  # stepsize (needs to be small, why?)
+tune_factor = 0.1  # tune factor (needs to be small, why?)
 tolerance = 1e-5  # tolerance
+maxiter = 100  # maximum number of iterations
 
 ############### Continuation ############################
 # find initial solution
-rootfinding = RootFinding(maxiter)
+rootfinding = RootFinding(tolerance, maxiter)
 rootfinding.output = True
-rootfinding.newtonRaphson(ebm, initial_temperature, tolerance)
-print(f"Initial solution {ebm.T_avg()}")
+rootfinding.newtonRaphson(ebm)
+print(f"Initial solution:\n\tcoeffs = {ebm.T_coeffs}\n\taverage = {ebm.T_avg()}")
+# plt.plot(ebm.x, ebm.T_x(ebm.x), label="Initial guess")
 
-continuation = Continuation(maxiter)
-errors = continuation.arclength(ebm, parameter_name, stepsize, tune_factor, tolerance)
+continuation = Continuation(tolerance, maxiter)
+errors = continuation.arclength(ebm, parameter_name, stepsize, tune_factor)
 plt.plot(errors)
+plt.yscale("log")
 plt.show()
-print(f"Continuation solution {ebm.T_avg()}")
+print(f"Continuation solution:\n\tcoeffs = {ebm.T_coeffs}\n\taverage = {ebm.T_avg()}")
