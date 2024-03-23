@@ -20,7 +20,7 @@ n = 5  # number of Legendre polynomials
 number_of_quad_points = 2 * n  # number of quadrature points
 grid_resolution = 100  # resolution of the grid
 initial_temperature = (
-    220  # 220  # initial guess for (T # follows from boundary conditions and delta = 0)
+    270  # 220  # initial guess for (T # follows from boundary conditions and delta = 0)
 )
 maxiter = 100  # maximum number of iterations for Newton-Raphson method
 

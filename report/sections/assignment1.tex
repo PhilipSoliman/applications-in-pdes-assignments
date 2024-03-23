@@ -1,4 +1,7 @@
 \section{Assignment 1}
+This goal of this assignment is to find the equilibria of a energy balance equation based on a very simplified model of the Earth.
+Additionally, we perform a one parameter analysis using continuation on a parameter that represents the greenhouse effect. 
+This allows us to study the bifurcation diagram of the model.
 
 % table of variables and their meanings
 \begin{table}[H]
@@ -17,7 +20,7 @@
         $\alpha$ & - & albedo of Earth & -\\
         $\alpha_1$ & - & albedo of ice & 0.7\\
         $\alpha_2$ & - & albedo of water & 0.289\\
-        $T^{*} K$ & - & temperature at which ice melts & 273.15\\
+        $T^{*} $ & K & temperature at which ice melts & 273.15\\
         $M$ & $K^{-1}$ & temperature gradient (?) & -\\
         $\mu $ & $J s^{-1} m^{-2}$ & greenhouse gas \& fine particle parameter & 30\\
         $R_E $ & $J s^{-1} m^{-2}$ & black body radiation & -\\
@@ -140,7 +143,7 @@ sizes with $n_p \leq 80$. This means that as far as this assignment is concerned
 Figure \ref{fig:equilibria} shows the equilibria found using the Newton and Broyden methods. 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{figures/fixed_points.png}
+    \includegraphics[width=0.7\textwidth]{figures/fixed_points.png}
     \caption{Equilibria found using the Newton and Broyden methods for a range of homogeneous initial temperatures $T_0$. 
     The color intensity indicates the amount of iterations required to converge.
     a high intensity indictes the method needed a low amount of iterations to converge.}
@@ -165,5 +168,84 @@ The first corresponds to a frozen Earth, the second to a partially frozen Water 
     its jacobian. This way we can find the other equilibria. We repeat this until we reach $\gamma = 1$, at which point we find an initial equilibrium.
     
 \subsection{Bifurcation diagrams}
+    The pseudo arclength continuation is implemented by first introducing the parametrisation $(T, \mu)\mapsto(T(s), \mu(s))$. This results in a extended 
+    system of equations, which is the original system with an additional parametrisation equation.
+    \begin{align*}
+        \begin{cases}
+            F(T(s), \mu(s)) = 0,\\
+            p(T, \mu, s) = 0.
+        \end{cases},
+    \end{align*}
+    where 
+    \begin{align*}
+        p(T, \mu, s) = 2\zeta(T - \bar{T})\frac{d T}{ds} + 2(1-\zeta)(\mu - \bar{\mu})\frac{d \mu}{ds} - \Delta s,
+    \end{align*}
+    where $(\bar{T}, \bar{\mu})$ denote the current equilibrium, $(T, \mu)$ the continued (as of yet uknown) solution, 
+    $\zeta$ is a tune factor and $\Delta s$ is the arclength or step size
+
+    The jacobian of this system is given by
+    \begin{align*}
+        \tilde{F}' = 
+        \begin{bmatrix}
+            \frac{\partial F}{\partial T} & \frac{\partial F}{\partial \mu}\\
+            \frac{\partial p}{\partial T} & \frac{\partial p}{\partial \mu}
+        \end{bmatrix},
+    \end{align*}
+    which after discretisation becomes
+    \begin{align*}
+        \textrm{D}\tilde{F} = 
+        \begin{bmatrix}
+            \frac{\partial \mathbf{F}}{\partial \mathbf{a}} & \frac{\partial \mathbf{F}}{\partial \mu}\\
+            2\zeta\left(\frac{d \mathbf{T}}{ds}\right)^T & 2(1-\zeta)\frac{d \mu}{ds}
+        \end{bmatrix}.
+    \end{align*}
+    The above system can be solved using the Newton method. The condition for convergence is such that the update
+    \begin{align*}
+        \begin{bmatrix}
+            \Delta \mathbf{a}\\
+            \Delta \mu
+        \end{bmatrix} = -\left(\textrm{D}\tilde{F}\right)^{-1}\begin{bmatrix}
+            \mathbf{F}\\
+            p
+        \end{bmatrix},
+    \end{align*}
+    must be smaller than some tolerance $\epsilon = 10^{-5}$.
+    	
+    Figure \ref{fig:bifurcation} shows the bifurcation diagram for the Earth model. This figure was made by rerunning
+    the continuation scheme for different initial temperatures $T_0$ and plotting the equilibria found. 
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/ebm_continuation.png}
+        \caption{Bifurcation diagram for the Earth model. Green solid lines indicates a stable branch
+        while red, dashed lines indicate an unstable branch.}
+        \label{fig:bifurcation}
+    \end{figure}
+
+    A typical temperature profile is given in Figure \ref{fig:temperature_profile}. We see that the temperature profile is symmetric around the equator, which is expected.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.7\textwidth]{figures/equilibrium_T.png}
+        \caption{Typical temperature profile for the Earth model.}
+        \label{fig:temperature_profile}
+    \end{figure}
+
+    We see from Figure \ref{fig:bifurcation} that we need a small step size to accurately resolve all the branches in the bifurcation diagram ($\Delta s \leq 0.1$).
+    Additionally, we should place emphasis on tracking small changes in the parameter ($\zeta \leq 0.001$).
+
+    In figure \ref{fig:bifurcation} we solely identify fold (subtle) and jump (critical) bifurcations.
+    
+    Next to this we recover the three equilibria found above. For small values of the diffusion constant $D=0.003, 0.3$ we find that for $\mu\gtrapprox50$ there is only 
+    one stable branch. In case of the partially frozen Earth, we see that increasing $\mu$ at first has the effect of lowering the temperature.
+    However, at some point it appears the greenhouse effect becomes strong enough to counteract the cooling effect of the ice the solution suddenly jumps to the
+    aforementioned stable branch.
+    
+    This behaviour is radically different however for $D=30$. We suddenly see many more branches appearing. This is due to the fact that the heat dispersion is so strong
+    that the temperature gradient is much steeper. This results in initially completely ice covered earths to become unstable.
+
 
 \subsection{Conclusion}
+    We have found the equilibria of the Earth model and studied the bifurcation diagram. We have seen that for default parameter values the Earth model has three distinct equilibria, 
+    corresponding to a frozen, a partially frozen and a warm Earth. We have also seen that the bifurcation diagram is sensitive to the 
+    diffusion constant $D$. For small values of $D$ we see that the bifurcation diagram is relatively simple, with only fold and jump bifurcations. However, for 
+    large values of $D$ the bifurcation diagram becomes much more complex, with many more branches appearing. This is due to the fact that the heat dispersion is so 
+    strong that the temperature gradient is much steeper. This results in initially completely ice covered earths to become unstable.
