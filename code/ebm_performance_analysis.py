@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from helper import pyutils
+
 pyutils.add_modules_to_path()
 from ebm import EBM
 from timeit import timeit
@@ -18,7 +19,8 @@ n_max = 80  # maximum n for performance analysis (do not set higher than 80 to p
 n_values = np.arange(n_min, n_max + 1, 1, dtype=int)
 F_times = np.zeros(n_values.size)
 F_T_times = np.zeros(n_values.size)
-progress_msg = "n = {0:d}, F (s) = {1:2e}, F_T (s) = {2:2e}"
+approx_F_T_times = np.zeros(n_values.size)
+progress_msg = "n = {0:d}, F (s) = {1:2e}, F_T (s) = {2:2e} aF_T (s) = {3:2e}"
 pbar = tqdm(enumerate(n_values), desc="", total=n_max, unit="run", miniters=10)
 
 print("Running NLS evaluation time for different n...")
@@ -37,11 +39,19 @@ for i, n in pbar:
     )
     F_T_times[i] = F_T_time
 
+    approx_F_T_time = timeit(
+        "ebm.evaluate_derivative_finite_difference()",
+        globals=globals(),
+        number=timing_loops,
+    )
+    approx_F_T_times[i] = approx_F_T_time
+
     # progress using tqdm
-    pbar.set_description(progress_msg.format(n, F_time, F_T_time))
+    pbar.set_description(progress_msg.format(n, F_time, F_T_time, approx_F_T_time))
 
 plt.plot(n_values, F_times / timing_loops, label="$F(T)$")
 plt.plot(n_values, F_T_times / timing_loops, label="$F_T(T)$")
+plt.plot(n_values, approx_F_T_times / timing_loops, label="$F_T(T)$ (approx)")
 plt.xlabel("n")
 plt.ylabel("Time (s)")
 plt.legend()

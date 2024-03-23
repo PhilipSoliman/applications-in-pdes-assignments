@@ -76,7 +76,7 @@ ax_br.scatter(
     initial_temperatures,
     fixed_points,
     c=(np.max(iterations) - iterations) ** 2,
-    cmap="Blues_r",
+    cmap="Oranges_r",
     s=100,
     marker="o",
     alpha=0.8,
