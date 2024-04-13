@@ -1,7 +1,7 @@
 from os.path import abspath, dirname
 from pathlib import Path
-from sys import path, argv
-from pathlib import Path
+from sys import argv, path
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -16,8 +16,11 @@ def add_modules_to_path() -> None:
     root = get_root()
     path.append(str(root / "code"))
     path.append(str(root / "code" / "classes"))
-    path.append(str(root / "code" / "helper"))
-    path.append(str(root / "code" / "tests"))
+    # path.append(str(root / "code" / "helper"))
+    # path.append(str(root / "code" / "tests"))
+
+
+add_modules_to_path()  # add modules to path every time this module is imported
 
 
 # get CLI
