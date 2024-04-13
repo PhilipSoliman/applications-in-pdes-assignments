@@ -1,7 +1,6 @@
 import numpy as np
-from tqdm import tqdm
 from non_linear_system import NonLinearSystem
-from root_finding import RootFinding
+from tqdm import tqdm
 
 
 class Continuation:
