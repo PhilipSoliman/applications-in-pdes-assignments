@@ -1,6 +1,8 @@
+from typing import Callable
+
 import numpy as np
-from tqdm import tqdm
 from non_linear_system import NonLinearSystem
+from tqdm import tqdm
 
 
 class RootFinding:
@@ -13,18 +15,24 @@ class RootFinding:
         self.method = None
         self.pbar = None
         self.singular_matrix = False
+        self.exactDerivative = True
+        self.stepsize = 0
 
     # General method for finding roots
     def findRoot(
         self, nls: NonLinearSystem, exact: bool = True, stepsize: float = 1e-6
     ) -> list:
+        self.exactDerivative = exact
+        self.converged = False
+        self.stepsize = stepsize
+        self.print(f"Running {self.method}...")
+        self.instantiate_pbar(self.maxiter)
+
         F = nls.evaluate()
+        JF = nls.evaluate_derivative()
         error = np.linalg.norm(F)
         errors = []
         i = 0
-        self.converged = False
-        self.print(f"Running {self.method}...")
-        self.instantiate_pbar(self.maxiter)
         while error > self.tolerance:
             self.update_pbar(i, error)
             if i == self.maxiter:
@@ -34,14 +42,7 @@ class RootFinding:
                 )
                 break
 
-            if self.method == "NR":
-                F = self.newtonRaphsonUpdate(nls, F, exact, stepsize=stepsize)
-            elif self.method == "BR":
-                if i == 0:
-                    B = nls.evaluate_derivative()
-                F, B = self.broydensMethodUpdate(nls, F, B)
-            else:
-                raise ValueError("Method not specified and/or implemented.")
+            F, JF = self.updateMethod(nls, F, JF=JF)
 
             # check for singular matrix
             if self.singular_matrix:
@@ -63,44 +64,59 @@ class RootFinding:
 
         return errors
 
-    # Method updates
+    # updates Methods (Each should have the same signature)
     def newtonRaphsonUpdate(
-        self, nls: NonLinearSystem, F: np.ndarray, exact: bool, stepsize: float = 1e-6
+        self, nls: NonLinearSystem, F: np.ndarray, JF: np.ndarray = None
     ) -> np.ndarray:
-        if exact:
-            dF = nls.evaluate_derivative()
+        if self.exactDerivative:
+            JF = nls.evaluate_derivative()
         else:
-            dF = nls.evaluate_derivative_finite_difference(stepsize)
-        update = np.linalg.solve(dF, F)
+            JF = nls.evaluate_derivative_finite_difference(self.stepsize)
+        update = np.linalg.solve(JF, F)
         nls.update_solution(-update)
         F = nls.evaluate()
-        return F
+        return F, JF
 
     def broydensMethodUpdate(
-        self, nls: NonLinearSystem, F: np.ndarray, B: np.ndarray
+        self, nls: NonLinearSystem, F: np.ndarray, JF: np.ndarray = None
     ) -> tuple[np.ndarray]:
         try:
-            update = -np.linalg.solve(B, F)
+            update = -np.linalg.solve(JF, F)
         except np.linalg.LinAlgError:
             self.singular_matrix = True
-            return F, B
+            return F, JF
         nls.update_solution(update)  # TODO: check if solution is implicitly updated
         F = nls.evaluate()
-        B += np.outer(F, update) / (update.T @ update)
-        return F, B
+        JF += np.outer(F, update) / (update.T @ update)
+        return F, JF
 
     # Method handles
     def newtonRaphson(
         self, NLS: NonLinearSystem, exact: bool = True, stepsize: float = 1e-6
     ) -> list:
-        self.method = "NR"
+        self.updateMethod = "NR"
         return self.findRoot(NLS, exact, stepsize)
 
     def broydensMethod(
         self, NLS: NonLinearSystem, exact: bool = True, stepsize: float = 1e-6
     ) -> list:
-        self.method = "BR"
+        self.updateMethod = "BR"
         return self.findRoot(NLS, exact, stepsize)
+
+    # updateMethod property
+    @property
+    def updateMethod(self) -> Callable:
+        return self._updateMethod
+
+    @updateMethod.setter
+    def updateMethod(self, method: str) -> None:
+        if method == "NR":
+            self._updateMethod = self.newtonRaphsonUpdate
+        elif method == "BR":
+            self._updateMethod = self.broydensMethodUpdate
+        else:
+            raise ValueError("Method not specified and/or implemented.")
+        self.method = method
 
     # Control output
     def print(self, message: str, **kwargs) -> None:
