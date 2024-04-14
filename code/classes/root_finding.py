@@ -64,6 +64,21 @@ class RootFinding:
 
         return errors
 
+    # updateMethod property
+    @property
+    def updateMethod(self) -> Callable:
+        return self._updateMethod
+
+    @updateMethod.setter
+    def updateMethod(self, method: str) -> None:
+        if method == "NR":
+            self._updateMethod = self.newtonRaphsonUpdate
+        elif method == "BR":
+            self._updateMethod = self.broydensMethodUpdate
+        else:
+            raise ValueError("Method not specified and/or implemented.")
+        self.method = method
+
     # updates Methods (Each should have the same signature)
     def newtonRaphsonUpdate(
         self, nls: NonLinearSystem, F: np.ndarray, JF: np.ndarray = None
@@ -102,21 +117,6 @@ class RootFinding:
     ) -> list:
         self.updateMethod = "BR"
         return self.findRoot(NLS, exact, stepsize)
-
-    # updateMethod property
-    @property
-    def updateMethod(self) -> Callable:
-        return self._updateMethod
-
-    @updateMethod.setter
-    def updateMethod(self, method: str) -> None:
-        if method == "NR":
-            self._updateMethod = self.newtonRaphsonUpdate
-        elif method == "BR":
-            self._updateMethod = self.broydensMethodUpdate
-        else:
-            raise ValueError("Method not specified and/or implemented.")
-        self.method = method
 
     # Control output
     def print(self, message: str, **kwargs) -> None:
