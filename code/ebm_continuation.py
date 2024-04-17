@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from helper import pyutils
-
-pyutils.add_modules_to_path()
 from ebm import EBM
 from root_finding import RootFinding
 from continuation import Continuation
