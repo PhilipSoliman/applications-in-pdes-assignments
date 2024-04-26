@@ -120,7 +120,7 @@ class MCM(NonLinearSystem):
         )
 
     def evaluate_derivative_finite_difference(self, h: float = 1e-6) -> np.ndarray:
-        pass
+        raise NotImplementedError("This method is not implemented yet.")
 
     def get_current_solution(self) -> np.ndarray:
         return self.x
