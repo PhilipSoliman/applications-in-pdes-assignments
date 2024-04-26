@@ -43,7 +43,7 @@ class MCM(NonLinearSystem):
         self._p6 = self.p6_default
         self._p7 = self.p7_default
         self._p8 = self.p8_default
-        self.x = None
+        self._x = None
         self.system = None
         self.systemDimensionless = None
         self.defineSymbols()
@@ -107,10 +107,10 @@ class MCM(NonLinearSystem):
                     -self.p1 * x1,
                     -self.p2 * x1,
                 ],
-                [-self.p4 * x2, self.p3 * (1 - x2) - self.p4 * x1, 0],
+                [-self.p4 * x2, self.p3 * (1 - x2) - self.p3 * x2 - self.p4 * x1, 0],
                 [
                     self.p5 * x3 / (self.p6 + x1)
-                    - self.p5 * x3 / (self.p6 + x1) ** 2
+                    - self.p5 * x1 * x3 / (self.p6 + x1) ** 2
                     - self.p7 * x3,
                     0,
                     self.p5 * x1 / (self.p6 + x1) - self.p7 * x1 - self.p8,
@@ -241,19 +241,23 @@ class MCM(NonLinearSystem):
 
         self.symPrint(self.fixedPoints)
 
-    def getStableStationaryPoints(self) -> dict:
+    def getStableStationaryPoints(self) -> list:
         if self.fixedPoints is None:
             self.findStationaryPoints()
         stable_points = []
         for i, point in enumerate(self.fixedPoints["stationary_points"]):
             if self.fixedPoints["stability"][i] == "Stable":
-                stable_points.append(point)
+                stable_points.append(np.array(list(point), dtype=float))
         return stable_points
 
     def symPrint(self, expr: Callable) -> None:
         sym.pprint(expr, **self.printSettings)
 
     # getters
+    @property
+    def x(self) -> np.ndarray:
+        return self._x
+
     @property
     def p1(self) -> float:
         return self._p1
@@ -287,6 +291,10 @@ class MCM(NonLinearSystem):
         return self._p8
 
     # setters
+    @x.setter
+    def x(self, value: np.ndarray) -> None:
+        self._x = value
+
     @p1.setter
     def p1(self, value: float) -> None:
         self._p1 = value
