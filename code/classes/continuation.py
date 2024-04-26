@@ -1,5 +1,7 @@
 import numpy as np
+from branching_system import BranchingSystem
 from non_linear_system import NonLinearSystem
+from root_finding import RootFinding
 from tqdm import tqdm
 
 
@@ -128,6 +130,8 @@ class Continuation:
         solutionMaxima = []
         parameterValues = []
         stableBranch = []
+        bifurcationPoints = []
+        self.stableBranch = self.checkStability(nls)
         while True:
             solution = nls.get_current_solution()
             average = np.mean(solution)
@@ -140,11 +144,12 @@ class Continuation:
             parameterValues.append(parameter)
             stableBranch.append(self.stableBranch)  # calculates eigenvalues
 
+            old_stability = self.stableBranch
             if self.method == "ARC":
                 self.arclength(nls, self.parameterName, self.stepsize, self.tuneFactor)
             else:
                 raise ValueError("Method not specified and/or implemented.")
-
+            new_stability = self.stableBranch
             i += 1
 
             self.print(
@@ -171,15 +176,13 @@ class Continuation:
                 self.print("Fold detected. Exiting...")
                 break
 
-            # if (
-            #     np.linalg.norm(
-            #         (self.previousSolution - self.continuedSolution)
-            #         / self.previousSolution
-            #     )
-            #     < 1e-2 and self.previousSolution is not None
-            # ):
-            #     print("Encountered old branch. Exiting...")
-            #     break
+            if old_stability != new_stability:
+                self.print("Encountered bifurcation! Determining exact location")
+                bifurcationPoint = self.findBifurcation(
+                    nls
+                )  # automatically updates nls to bifurcation point
+                bifurcationPoints.append(bifurcationPoint)
+                break  # TODO: implement restart + branch switching
 
         solutions = dict(
             average=np.array(solutionAverages),
@@ -187,6 +190,7 @@ class Continuation:
             maximum=np.array(solutionMaxima),
             parameter=np.array(parameterValues),
             stable=np.array(stableBranch),
+            bifurcations=bifurcationPoints,
         )
         return solutions
 
@@ -288,6 +292,32 @@ class Continuation:
         setattr(nls, self.parameterName, parameter)
         return dF_param
 
+    # bifurcation detection
+    def findBifurcation(self, nls: NonLinearSystem) -> dict:
+        """
+        Find the exact location of a bifurcation point using a direct method
+        see Seydel section 5.4.1 (algorithm 5.4)
+
+        Y = [solution, parameter, h]
+        F(Y) := branching system
+        """
+        self.print("Finding bifurcation point...")
+        branching_system = BranchingSystem(nls, self.parameterName)
+        Y = branching_system.get_current_solution()
+        F = branching_system.evaluate()
+        rootfinder = RootFinding()
+        rootfinder.output = True
+        _ = rootfinder.newtonRaphson(branching_system, exact=False)
+        dF = nls.evaluate_derivative()
+        eigvals = np.linalg.eigvals(dF)
+        return dict(
+            solution=nls.get_current_solution(),
+            parameter=getattr(nls, self.parameterName),
+            eigvals=eigvals,
+            type="...",  # TODO: add type of bifurcation detection
+        )
+
+    # helper methods
     def checkStability(self, nls: NonLinearSystem) -> None:
         """
         Check the stability of the current solution.
