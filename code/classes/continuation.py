@@ -57,7 +57,8 @@ class Continuation:
         performs single continuation step using the specified method.
         """
         self.convergence = False
-        self.previousSolution = np.append(nls.get_current_solution(), nls.mu)
+        parameter = getattr(nls, self.parameterName)
+        self.previousSolution = np.append(nls.get_current_solution(), parameter)
 
         if self.method == "ARC":
             errors = self.arclengthAlgorithm(nls, stepsize, self.tolerance)
