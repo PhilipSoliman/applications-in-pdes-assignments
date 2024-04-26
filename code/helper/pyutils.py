@@ -19,10 +19,6 @@ def add_modules_to_path() -> None:
     # path.append(str(root / "code" / "helper"))
     # path.append(str(root / "code" / "tests"))
 
-
-add_modules_to_path()  # add modules to path every time this module is imported
-
-
 # get CLI
 def get_cli_args() -> dict:
     args_d = {}
