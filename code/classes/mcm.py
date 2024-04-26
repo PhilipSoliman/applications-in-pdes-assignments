@@ -152,8 +152,6 @@ class MCM(NonLinearSystem):
         sys = [eq.subs(pvalues) for eq in self.systemDimensionless]
         eqs = [sym.Eq(eq.rhs, 0) for eq in sys]
         stationary_points = sym.solve(eqs, (self.sym_x1, self.sym_x2, self.sym_x3))
-        print("Stationary Points:")
-        pprint(stationary_points)
         J = sym.Matrix(
             [
                 [eq.rhs.diff(self.sym_x1) for eq in sys],
@@ -167,7 +165,6 @@ class MCM(NonLinearSystem):
         for x_0 in stationary_points:
             subs = {self.sym_x1: x_0[0], self.sym_x2: x_0[1], self.sym_x3: x_0[2]}
             J_eval = J.subs(subs)
-            # sym.pprint(J_eval)
             eigenvals = list(J_eval.eigenvals().keys())
             eigenvalues.append(eigenvals)
             if all([sym.re(eigenval) < 0 for eigenval in eigenvals]):
