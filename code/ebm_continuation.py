@@ -1,9 +1,11 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from helper import pyutils
+
+pyutils.add_modules_to_path()
+from continuation import Continuation
 from ebm import EBM
 from root_finding import RootFinding
-from continuation import Continuation
 
 # set figure output directory
 root = pyutils.get_root()
@@ -128,9 +130,9 @@ for T0 in initial_temperatures:
     )
 
     # plot results
-    mus = np.array(mus)
-    T_avgs = np.array(T_avgs)
-    stableBranch = np.array(stableBranch)
+    mus = mus
+    T_avgs = T_avgs
+    stableBranch = stableBranch
     if np.any(T_avgs < 0):
         print("Negative temperatures encountered.")
         continue
