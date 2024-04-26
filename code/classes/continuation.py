@@ -105,7 +105,7 @@ class Continuation:
         self.maxContinuations = maxContinuations
         return self.continuationLoop(nls)
 
-    def continuationLoop(self, nls: NonLinearSystem) -> None:
+    def continuationLoop(self, nls: NonLinearSystem) -> tuple[np.ndarray]:
         """
         Perform a continuation loop on the given NonLinearSystem object.
         Aim is to find all branches of solutions in the given parameter range.
@@ -123,7 +123,7 @@ class Continuation:
         # set initial parameter value
         setattr(nls, self.parameterName, self.parameterRange[0])
         i = 0
-        solutionAverage = []
+        solutionAverages = []
         parameterValues = []
         stableBranch = []
         while True:
@@ -135,7 +135,7 @@ class Continuation:
             average = np.mean(solution)
             minimum = np.min(solution)
             maximum = np.max(solution)
-            solutionAverage.append(average)
+            solutionAverages.append(average)
             parameter = getattr(nls, self.parameterName)
             parameterValues.append(parameter)
             stableBranch.append(self.stableBranch)  # calculates eigenvalues
@@ -176,7 +176,7 @@ class Continuation:
             #     print("Encountered old branch. Exiting...")
             #     break
 
-        return solutionAverage, parameterValues, stableBranch
+        return np.array(solutionAverages), np.array(parameterValues), np.array(stableBranch)
 
     # arclength method
     def arclengthAlgorithm(
