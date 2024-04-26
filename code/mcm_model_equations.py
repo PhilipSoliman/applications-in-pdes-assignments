@@ -82,7 +82,6 @@ for i, stable_point in enumerate(stable_points):
         ax.set_xlabel("$p_1$")
         ax.legend()
 
-    # ax.set_title(r"$x_0 = (" + f"{stable_point[0]:.2f}, {stable_point[1]:.2f}, {stable_point[2]}" + r")$")
     ax.set_title(
         rf"$x_0  \approx ({stable_point[0]:.1f}, {stable_point[1]:.1f}, {stable_point[2]:.1f})$"
     )
