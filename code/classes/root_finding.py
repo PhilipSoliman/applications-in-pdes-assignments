@@ -90,6 +90,11 @@ class RootFinding:
             JF = nls.evaluate_derivative()
         else:
             JF = nls.evaluate_derivative_finite_difference(self.stepsize)
+        try:
+            update = np.linalg.solve(JF, F)
+        except np.linalg.LinAlgError:
+            self.singular_matrix = True
+            return F, JF
         update = np.linalg.solve(JF, F)
         nls.update_solution(-update)
         F = nls.evaluate()
