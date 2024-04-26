@@ -25,6 +25,7 @@ class MCM(NonLinearSystem):
     p7_default = 0.2
     p8_default = 0.5
 
+    # constructor
     def __init__(self) -> None:
         self._p1 = self.p1_default
         self._p2 = self.p2_default
@@ -36,6 +37,40 @@ class MCM(NonLinearSystem):
         self._p8 = self.p8_default
         self.system = None
         self.systemDimensionless = None
+        self.defineSymbols()
+
+    def defineSymbols(self) -> None:
+        self.sym_t = sym.symbols("t")  # independent variable (time)
+        self.sym_T = sym.Function("T")(self.sym_t)
+        self.sym_H = sym.Function("H")(self.sym_t)
+        self._sym_E = sym.Function("E")(self.sym_t)  # Tumor, Healthy & Effector cells
+        self.sym_k1, self.sym_k2, self.sym_k3 = sym.symbols(
+            "k1 k2 k3"
+        )  # coefficients: Tumor, Healthy & Effector cell carrying capacities
+        self.sym_r1, self.sym_r2, self.sym_r3 = sym.symbols("r1 r2 r3")  # growth rates
+        self.sym_a12, self.sym_a13, self.sym_a21, self.sym_a31 = sym.symbols(
+            "a12 a13 a21 a31"
+        )  # interaction coefficients
+        self.sym_d3 = sym.symbols("d3")  # death rate of effector cells
+        self.sym_x1 = sym.Function("x1")(self.sym_t)
+        self.sym_x2 = sym.Function("x2")(self.sym_t)
+        self.sym_x3 = sym.Function("x3")(self.sym_t)  # dimensionless variables
+        (
+            self.sym_p1,
+            self.sym_p2,
+            self.sym_p3,
+            self.sym_p4,
+            self.sym_p5,
+            self.sym_p6,
+            self.sym_p7,
+            self.sym_p8,
+        ) = sym.symbols(
+            "p1 p2 p3 p4 p5 p6 p7 p8"
+        )  # dimensionless parameters
+        self.sym_tau = sym.symbols(r"\tau")  # time scale
+        self.sym_T = self.sym_k1 * self.sym_x1
+        self.sym_H = self.sym_k2 * self.sym_x2
+        self.sym_E = self.sym_k3 * self.sym_x3
 
     # main methods
     def evaluate(self) -> np.ndarray:
@@ -58,89 +93,97 @@ class MCM(NonLinearSystem):
 
     # symbolic methods
     def constructSystem(self) -> None:
-        sym.init_printing()
-        t = sym.symbols("t")  # independent variable (time)
-        T = sym.Function("T")(t)
-        H = sym.Function("H")(t)
-        E = sym.Function("E")(t)  # Tumor, Healthy & Effector cells
-        k1, k2, k3 = sym.symbols(
-            "k1 k2 k3"
-        )  # coefficients: Tumor, Healthy & Effector cell carrying capacities
-        r1, r2, r3 = sym.symbols("r1 r2 r3")  # growth rates
-        a12, a13, a21, a31 = sym.symbols("a12 a13 a21 a31")  # interaction coefficients
-        d3 = sym.symbols("d3")  # death rate of effector cells
-        x1 = sym.Function("x1")(t)
-        x2 = sym.Function("x2")(t)
-        x3 = sym.Function("x3")(t)  # dimensionless variables
-        p1, p2, p3, p4, p5, p6, p7, p8 = sym.symbols(
-            "p1 p2 p3 p4 p5 p6 p7 p8"
-        )  # dimensionless parameters
-        tau = sym.symbols(r"\tau")  # time scale
-        T = k1 * x1
-        H = k2 * x2
-        E = k3 * x3
-
         rhs = [
-            r1 * T * (1 - T / k1) - a12 * T * H - a13 * T * E,
-            r2 * H * (1 - H / k2) - a21 * H * T,
-            r3 * T * E / (T + k3) - a31 * E * T - d3 * E,
+            self.sym_r1 * self.sym_T * (1 - self.sym_T / self.sym_k1)
+            - self.sym_a12 * self.sym_T * self.sym_H
+            - self.sym_a13 * self.sym_T * self.sym_E,
+            self.sym_r2 * self.sym_H * (1 - self.sym_H / self.sym_k2)
+            - self.sym_a21 * self.sym_H * self.sym_T,
+            self.sym_r3 * self.sym_T * self.sym_E / (self.sym_T + self.sym_k3)
+            - self.sym_a31 * self.sym_E * self.sym_T
+            - self.sym_d3 * self.sym_E,
         ]
         self.system = [
-            sym.Eq(T.diff(t), rhs[0]).subs(t, tau/r1),
-            sym.Eq(H.diff(t), rhs[1]).subs(t, tau/r1),
-            sym.Eq(E.diff(t), rhs[2]).subs(t, tau/r1)
+            sym.Eq(self.sym_T.diff(self.sym_t), rhs[0]),
+            sym.Eq(self.sym_H.diff(self.sym_t), rhs[1]),
+            sym.Eq(self.sym_E.diff(self.sym_t), rhs[2]),
         ]
-
         rhsDimensionless = [
-            x1 * (1 - x1) - p1 * x1 * x2 - p2 * x1 * x3,
-            p3 * x2 * (1 - x2) - p4 * x2 * x1,
-            p5 * x1 * x3 / (x1 + p6) - p7 * x1 * x3 - p8 * x3,
+            self.sym_x1 * (1 - self.sym_x1)
+            - self.sym_p1 * self.sym_x1 * self.sym_x2
+            - self.sym_p2 * self.sym_x1 * self.sym_x3,
+            self.sym_p3 * self.sym_x2 * (1 - self.sym_x2)
+            - self.sym_p4 * self.sym_x2 * self.sym_x1,
+            self.sym_p5 * self.sym_x1 * self.sym_x3 / (self.sym_x1 + self.sym_p6)
+            - self.sym_p7 * self.sym_x1 * self.sym_x3
+            - self.sym_p8 * self.sym_x3,
         ]
         self.systemDimensionless = [
-            sym.Eq(x1.diff(t), rhsDimensionless[0]),
-            sym.Eq(x2.diff(t), rhsDimensionless[1]),
-            sym.Eq(x3.diff(t), rhsDimensionless[2]),
+            sym.Eq(self.sym_x1.diff(self.sym_t), rhsDimensionless[0]),
+            sym.Eq(self.sym_x2.diff(self.sym_t), rhsDimensionless[1]),
+            sym.Eq(self.sym_x3.diff(self.sym_t), rhsDimensionless[2]),
         ]
-        rhs = [
-            r1 * T * (1 - T / k1) - a12 * T * H - a13 * T * E,
-            r2 * H * (1 - H / k2) - a21 * H * T,
-            ((x1 + p6) * (r3 * T * E + (T + k3) * (-a31 * E * T - d3 * E))).expand(),
-        ]
-        rhsDimensionless = [
-            x1 * (1 - x1) - p1 * x1 * x2 - p2 * x1 * x3,
-            p3 * x2 * (1 - x2) - p4 * x2 * x1,
-            (
-                (T + k3) * (p5 * x1 * x3 + (x1 + p6) * (-p7 * x1 * x3 - p8 * x3))
-            ).expand(),
-        ]
-
-        eqs = [sym.Eq(rhs[i], rhsDimensionless[i]).expand() for i in range(len(rhs))]
-        for eq in eqs:
-            sym.pprint(eq)
-        sol1 = sym.solve_undetermined_coeffs(eqs[0], [p1, p2], x1, x2, x3, dict=True)[0]
-        sol2 = sym.solve_undetermined_coeffs(eqs[1], [p3, p4], x1, x2, dict=True)[0]
-        sol3 = sym.solve_undetermined_coeffs(
-            eqs[2], [p5, p6, p7, p8], x1, x3, dict=True
-        )[0]
-        pvalues = {}
-        params = [p1, p2, p3, p4, p5, p6, p7, p8]
-        solutions = list(sol1.values()) + list(sol2.values()) + list(sol3.values())
-        for parameter, solution in zip(params, solutions):
-            pvalues[str(parameter)] = str(solution)
-        pprint(pvalues)
 
     def printSystem(self) -> None:
         if self.system:
             print("Original System:")
             for eq in self.system:
                 sym.pprint(eq, use_unicode=True)
+
+    def printDimensionlessSystem(self) -> None:
         if self.systemDimensionless:
             print("Dimensionless System:")
             for eq in self.systemDimensionless:
                 sym.pprint(eq, use_unicode=True)
 
     def findStationaryPoints(self) -> None:
-        pass
+        if self.systemDimensionless is None:
+            self.constructSystem()
+        pvalues = {
+            "p1": self.p1,
+            "p2": self.p2,
+            "p3": self.p3,
+            "p4": self.p4,
+            "p5": self.p5,
+            "p6": self.p6,
+            "p7": self.p7,
+            "p8": self.p8,
+        }
+        sys = [eq.subs(pvalues) for eq in self.systemDimensionless]
+        eqs = [sym.Eq(eq.rhs, 0) for eq in sys]
+        stationary_points = sym.solve(eqs, (self.sym_x1, self.sym_x2, self.sym_x3))
+        print("Stationary Points:")
+        pprint(stationary_points)
+        J = sym.Matrix(
+            [
+                [eq.rhs.diff(self.sym_x1) for eq in sys],
+                [eq.rhs.diff(self.sym_x2) for eq in sys],
+                [eq.rhs.diff(self.sym_x3) for eq in sys],
+            ]
+        )
+        sym.pprint(J)
+        eigenvalues = []
+        stability = []
+        for x_0 in stationary_points:
+            subs = {self.sym_x1: x_0[0], self.sym_x2: x_0[1], self.sym_x3: x_0[2]}
+            J_eval = J.subs(subs)
+            # sym.pprint(J_eval)
+            eigenvals = list(J_eval.eigenvals().keys())
+            eigenvalues.append(eigenvals)
+            if all([sym.re(eigenval) < 0 for eigenval in eigenvals]):
+                stability.append("Stable")
+            elif any([sym.re(eigenval) > 0 for eigenval in eigenvals]):
+                stability.append("Unstable")
+            else:
+                stability.append("Saddle")
+
+        self.fixedPoints = dict(
+            stationary_points=stationary_points,
+            eigenvalues=eigenvalues,
+            stability=stability,
+        )
+
+        pprint(self.fixedPoints)
 
     # getters
     @property
