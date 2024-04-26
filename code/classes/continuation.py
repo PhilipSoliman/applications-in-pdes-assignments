@@ -121,16 +121,17 @@ class Continuation:
         - repeat until maxContinuations reached
         """
         i = 0
-        T_avgs = []
-        mus = []
+        solutionAverage = []
+        parameterValues = []
         stableBranch = []
         while True:
             if self.method == "ARC":
                 self.arclength(nls, self.parameterName, self.stepsize, self.tuneFactor)
             else:
                 raise ValueError("Method not specified and/or implemented.")
-            T_avgs.append(nls.T_avg())
-            mus.append(nls.mu)
+            solution = nls.get_current_solution()
+            solutionAverage.append(np.mean(solution))
+            parameterValues.append(getattr(nls, self.parameterName))
             stableBranch.append(self.stableBranch)  # calculates eigenvalues
 
             i += 1
@@ -167,7 +168,7 @@ class Continuation:
             #     print("Encountered old branch. Exiting...")
             #     break
 
-        return T_avgs, mus, stableBranch
+        return solutionAverage, parameterValues, stableBranch
 
     # arclength method
     def arclengthAlgorithm(
