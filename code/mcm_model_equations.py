@@ -65,6 +65,10 @@ for i, stable_point in enumerate(stable_points):
     maxima = solutions["maximum"]
     p1s = solutions["parameter"]
     stable = solutions["stable"]
+    bifurcation_points = solutions["bifurcations"]
+    if bifurcation_points:
+        print("Bifurcation points:")
+        pprint(bifurcation_points)
 
     # stable branches
     ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
