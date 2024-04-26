@@ -35,15 +35,24 @@ class MCM(NonLinearSystem):
         self._p6 = self.p6_default
         self._p7 = self.p7_default
         self._p8 = self.p8_default
+        self.x = None
         self.system = None
         self.systemDimensionless = None
         self.defineSymbols()
+
+        # Sympy print settings
+        self.printSettings = dict(
+            use_unicode=True,
+            wrap_line=False,
+            imaginary_unit="i",
+            num_columns=100,
+        )
 
     def defineSymbols(self) -> None:
         self.sym_t = sym.symbols("t")  # independent variable (time)
         self.sym_T = sym.Function("T")(self.sym_t)
         self.sym_H = sym.Function("H")(self.sym_t)
-        self._sym_E = sym.Function("E")(self.sym_t)  # Tumor, Healthy & Effector cells
+        self.sym_E = sym.Function("E")(self.sym_t)  # Tumor, Healthy & Effector cells
         self.sym_k1, self.sym_k2, self.sym_k3 = sym.symbols(
             "k1 k2 k3"
         )  # coefficients: Tumor, Healthy & Effector cell carrying capacities
@@ -68,13 +77,26 @@ class MCM(NonLinearSystem):
             "p1 p2 p3 p4 p5 p6 p7 p8"
         )  # dimensionless parameters
         self.sym_tau = sym.symbols(r"\tau")  # time scale
-        self.sym_T = self.sym_k1 * self.sym_x1
-        self.sym_H = self.sym_k2 * self.sym_x2
-        self.sym_E = self.sym_k3 * self.sym_x3
+
+        # coordinate transformation
+        # self.sym_tau = self.sym_r1 * self.sym_tau
+        # self.sym_T = self.sym_k1 * self.sym_x1
+        # self.sym_H = self.sym_k2 * self.sym_x2
+        # self.sym_E = self.sym_k3 * self.sym_x3
 
     # main methods
     def evaluate(self) -> np.ndarray:
-        pass
+        return np.array(
+            [
+                self.x[0] * (1 - self.x[0])
+                - self.p1 * self.x[0] * self.x[1]
+                - self.p2 * self.x[0] * self.x[2],
+                self.p3 * self.x[1] * (1 - self.x[1]) - self.p4 * self.x[1] * self.x[0],
+                self.p5 * self.x[0] * self.x[2] / (self.x[0] + self.p6)
+                - self.p7 * self.x[0] * self.x[2]
+                - self.p8 * self.x[2],
+            ]
+        )
 
     def evaluate_derivative(self) -> np.ndarray:
         pass
@@ -123,18 +145,37 @@ class MCM(NonLinearSystem):
             sym.Eq(self.sym_x2.diff(self.sym_t), rhsDimensionless[1]),
             sym.Eq(self.sym_x3.diff(self.sym_t), rhsDimensionless[2]),
         ]
+        self.defineSystemJacobian()
+
+    def defineSystemJacobian(self) -> None:
+        self.J = sym.Matrix(
+            [
+                [eq.rhs.diff(self.sym_T) for eq in self.system],
+                [eq.rhs.diff(self.sym_H) for eq in self.system],
+                [eq.rhs.diff(self.sym_E) for eq in self.system],
+            ]
+        )
+        self.J_dimensionless = sym.Matrix(
+            [
+                [eq.rhs.diff(self.sym_x1) for eq in self.systemDimensionless],
+                [eq.rhs.diff(self.sym_x2) for eq in self.systemDimensionless],
+                [eq.rhs.diff(self.sym_x3) for eq in self.systemDimensionless],
+            ]
+        )
 
     def printSystem(self) -> None:
         if self.system:
             print("Original System:")
             for eq in self.system:
-                sym.pprint(eq, use_unicode=True)
+                self.symPrint(eq)
+            self.symPrint(self.J)
 
     def printDimensionlessSystem(self) -> None:
         if self.systemDimensionless:
             print("Dimensionless System:")
             for eq in self.systemDimensionless:
-                sym.pprint(eq, use_unicode=True)
+                self.symPrint(eq)
+            self.symPrint(self.J_dimensionless)
 
     def findStationaryPoints(self) -> None:
         if self.systemDimensionless is None:
@@ -159,7 +200,6 @@ class MCM(NonLinearSystem):
                 [eq.rhs.diff(self.sym_x3) for eq in sys],
             ]
         )
-        sym.pprint(J)
         eigenvalues = []
         stability = []
         for x_0 in stationary_points:
@@ -180,7 +220,10 @@ class MCM(NonLinearSystem):
             stability=stability,
         )
 
-        pprint(self.fixedPoints)
+        self.symPrint(self.fixedPoints)
+
+    def symPrint(self, expr: Callable) -> None:
+        sym.pprint(expr, **self.printSettings)
 
     # getters
     @property
