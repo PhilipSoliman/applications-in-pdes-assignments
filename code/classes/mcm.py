@@ -25,6 +25,14 @@ class MCM(NonLinearSystem):
     p7_default = 0.2
     p8_default = 0.5
 
+    # sympy print settings
+    printSettings = dict(
+        use_unicode=True,
+        wrap_line=False,
+        imaginary_unit="i",
+        num_columns=70,
+    )
+
     # constructor
     def __init__(self) -> None:
         self._p1 = self.p1_default
@@ -39,14 +47,6 @@ class MCM(NonLinearSystem):
         self.system = None
         self.systemDimensionless = None
         self.defineSymbols()
-
-        # Sympy print settings
-        self.printSettings = dict(
-            use_unicode=True,
-            wrap_line=False,
-            imaginary_unit="i",
-            num_columns=100,
-        )
 
     def defineSymbols(self) -> None:
         self.sym_t = sym.symbols("t")  # independent variable (time)
@@ -168,6 +168,7 @@ class MCM(NonLinearSystem):
             print("Original System:")
             for eq in self.system:
                 self.symPrint(eq)
+            print("Jacobian:")
             self.symPrint(self.J)
 
     def printDimensionlessSystem(self) -> None:
@@ -175,6 +176,7 @@ class MCM(NonLinearSystem):
             print("Dimensionless System:")
             for eq in self.systemDimensionless:
                 self.symPrint(eq)
+            print("Jacobian:")
             self.symPrint(self.J_dimensionless)
 
     def findStationaryPoints(self) -> None:
@@ -221,6 +223,15 @@ class MCM(NonLinearSystem):
         )
 
         self.symPrint(self.fixedPoints)
+
+    def getStableStationaryPoints(self) -> dict:
+        if self.fixedPoints is None:
+            self.findStationaryPoints()
+        stable_points = []
+        for i, point in enumerate(self.fixedPoints["stationary_points"]):
+            if self.fixedPoints["stability"][i] == "Stable":
+                stable_points.append(point)
+        return stable_points
 
     def symPrint(self, expr: Callable) -> None:
         sym.pprint(expr, **self.printSettings)
