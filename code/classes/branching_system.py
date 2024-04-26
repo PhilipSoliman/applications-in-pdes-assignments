@@ -9,6 +9,8 @@ class BranchingSystem(NonLinearSystem):
     can be applied to this system to find its solutions: bifurcation points.
     """
 
+    # TODO: see section 5.5 (Seydel) on how to determine l and k such that the
+    # approximation of the initial h is good
     l_default = 1
     k_default = 1
 
@@ -42,6 +44,7 @@ class BranchingSystem(NonLinearSystem):
     def evaluate_derivative_finite_difference(self, step: float = 1e-6) -> np.ndarray:
         F = self.evaluate()
         current_solution = self.get_current_solution()
+        # dF = np.zeros((2 * self.n + 1, 2 * self.n + 1))
         F_step = np.zeros((2 * self.n + 1, 2 * self.n + 1))
         for i in range(2 * self.n + 1):
             Y = current_solution.copy()
@@ -49,7 +52,7 @@ class BranchingSystem(NonLinearSystem):
             self.set_current_solution(Y)
             F_step[i, :] = self.evaluate()
         dF = (F_step - F) / step
-        return dF
+        return dF.T
 
     def get_current_solution(self) -> np.ndarray:
         parameter = getattr(self.nls, self.parameterName)
@@ -80,9 +83,8 @@ class BranchingSystem(NonLinearSystem):
         e_l[self.l] = 1
         e_k = np.zeros(self.n)
         e_k[self.k] = 1
-        J_lk = (np.eye(self.n) - e_l[:, np.newaxis].T @ e_l) @ J + e_l[
-            :, np.newaxis
-        ].T @ e_k
+        J_lk = J
+        J_lk[self.l, :] = e_k
         return np.linalg.solve(J_lk, e_l)
 
     # getters
