@@ -105,7 +105,7 @@ class Continuation:
         self.maxContinuations = maxContinuations
         return self.continuationLoop(nls)
 
-    def continuationLoop(self, nls: NonLinearSystem) -> tuple[np.ndarray]:
+    def continuationLoop(self, nls: NonLinearSystem) -> dict[np.ndarray]:
         """
         Perform a continuation loop on the given NonLinearSystem object.
         Aim is to find all branches of solutions in the given parameter range.
@@ -124,21 +124,26 @@ class Continuation:
         setattr(nls, self.parameterName, self.parameterRange[0])
         i = 0
         solutionAverages = []
+        solutionMinima = []
+        solutionMaxima = []
         parameterValues = []
         stableBranch = []
         while True:
+            solution = nls.get_current_solution()
+            average = np.mean(solution)
+            solutionAverages.append(average)
+            minimum = np.min(solution)
+            solutionMinima.append(minimum)
+            maximum = np.max(solution)
+            solutionMaxima.append(maximum)
+            parameter = getattr(nls, self.parameterName)
+            parameterValues.append(parameter)
+            stableBranch.append(self.stableBranch)  # calculates eigenvalues
+
             if self.method == "ARC":
                 self.arclength(nls, self.parameterName, self.stepsize, self.tuneFactor)
             else:
                 raise ValueError("Method not specified and/or implemented.")
-            solution = nls.get_current_solution()
-            average = np.mean(solution)
-            minimum = np.min(solution)
-            maximum = np.max(solution)
-            solutionAverages.append(average)
-            parameter = getattr(nls, self.parameterName)
-            parameterValues.append(parameter)
-            stableBranch.append(self.stableBranch)  # calculates eigenvalues
 
             i += 1
 
@@ -176,7 +181,14 @@ class Continuation:
             #     print("Encountered old branch. Exiting...")
             #     break
 
-        return np.array(solutionAverages), np.array(parameterValues), np.array(stableBranch)
+        solutions = dict(
+            average=np.array(solutionAverages),
+            minimum=np.array(solutionMinima),
+            maximum=np.array(solutionMaxima),
+            parameter=np.array(parameterValues),
+            stable=np.array(stableBranch),
+        )
+        return solutions
 
     # arclength method
     def arclengthAlgorithm(
