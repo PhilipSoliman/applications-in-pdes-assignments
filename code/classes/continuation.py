@@ -120,6 +120,8 @@ class Continuation:
             - stop when encountering already found branch
         - repeat until maxContinuations reached
         """
+        # set initial parameter value
+        setattr(nls, self.parameterName, self.parameterRange[0])
         i = 0
         solutionAverage = []
         parameterValues = []
@@ -130,13 +132,19 @@ class Continuation:
             else:
                 raise ValueError("Method not specified and/or implemented.")
             solution = nls.get_current_solution()
-            solutionAverage.append(np.mean(solution))
-            parameterValues.append(getattr(nls, self.parameterName))
+            average = np.mean(solution)
+            minimum = np.min(solution)
+            maximum = np.max(solution)
+            solutionAverage.append(average)
+            parameter = getattr(nls, self.parameterName)
+            parameterValues.append(parameter)
             stableBranch.append(self.stableBranch)  # calculates eigenvalues
 
             i += 1
 
-            self.print(f"Continuation step {i}: mu = {nls.mu}, T_avg = {nls.T_avg()}")
+            self.print(
+                f"Continuation step {i}: {self.parameterName} = {parameter}, avg = {average:.2e}, min = {minimum:.2e}, max = {maximum:.2e}, stable = {self.stableBranch}"
+            )
 
             if not self.convergence:
                 self.print(f"Continuation did not converge after {i} steps. Exiting...")
@@ -148,9 +156,9 @@ class Continuation:
                 )
                 break
 
-            if nls.mu > self.parameterRange[1]:
+            if parameter > self.parameterRange[1]:
                 self.print(
-                    f"Parameter range reached ({self.parameterName} = {self.parameterRange[1]}). Exiting..."
+                    f"Parameter range reached end of range ({self.parameterName} >= {self.parameterRange[1]}). Exiting..."
                 )
                 break
 
@@ -282,7 +290,8 @@ class Continuation:
         Check if a fold bifurcation is encountered.
         """
         jacobian = nls.evaluate_derivative()
-        if np.linalg.matrix_rank(jacobian) < nls.n_polys:
+        n = jacobian.shape[0]
+        if np.linalg.matrix_rank(jacobian) < n:
             return True
         else:
             return False
