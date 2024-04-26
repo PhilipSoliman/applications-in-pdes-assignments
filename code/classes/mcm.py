@@ -99,19 +99,36 @@ class MCM(NonLinearSystem):
         )
 
     def evaluate_derivative(self) -> np.ndarray:
-        pass
+        x1, x2, x3 = self.x
+        return np.array(
+            [
+                [
+                    -self.p1 * x2 - self.p2 * x3 - 2 * x1 + 1,
+                    -self.p1 * x1,
+                    -self.p2 * x1,
+                ],
+                [-self.p4 * x2, self.p3 * (1 - x2) - self.p4 * x1, 0],
+                [
+                    self.p5 * x3 / (self.p6 + x1)
+                    - self.p5 * x3 / (self.p6 + x1) ** 2
+                    - self.p7 * x3,
+                    0,
+                    self.p5 * x1 / (self.p6 + x1) - self.p7 * x1 - self.p8,
+                ],
+            ]
+        )
 
     def evaluate_derivative_finite_difference(self, h: float = 1e-6) -> np.ndarray:
         pass
 
     def get_current_solution(self) -> np.ndarray:
-        pass
+        return self.x
 
     def set_current_solution(self, solution: np.ndarray) -> None:
-        pass
+        self.x = solution
 
     def update_solution(self, update) -> None:
-        pass
+        self.x += update
 
     # symbolic methods
     def constructSystem(self) -> None:
@@ -154,14 +171,14 @@ class MCM(NonLinearSystem):
                 [eq.rhs.diff(self.sym_H) for eq in self.system],
                 [eq.rhs.diff(self.sym_E) for eq in self.system],
             ]
-        )
+        ).T
         self.J_dimensionless = sym.Matrix(
             [
                 [eq.rhs.diff(self.sym_x1) for eq in self.systemDimensionless],
                 [eq.rhs.diff(self.sym_x2) for eq in self.systemDimensionless],
                 [eq.rhs.diff(self.sym_x3) for eq in self.systemDimensionless],
             ]
-        )
+        ).T
 
     def printSystem(self) -> None:
         if self.system:
