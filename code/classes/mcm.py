@@ -1,3 +1,4 @@
+from pprint import pprint
 from typing import Callable
 
 import numpy as np
@@ -33,6 +34,8 @@ class MCM(NonLinearSystem):
         self._p6 = self.p6_default
         self._p7 = self.p7_default
         self._p8 = self.p8_default
+        self.system = None
+        self.systemDimensionless = None
 
     # main methods
     def evaluate(self) -> np.ndarray:
@@ -54,7 +57,8 @@ class MCM(NonLinearSystem):
         pass
 
     # symbolic methods
-    def getDimensionlessSystem(self) -> dict:
+    def constructSystem(self) -> None:
+        sym.init_printing()
         t = sym.symbols("t")  # independent variable (time)
         T = sym.Function("T")(t)
         H = sym.Function("H")(t)
@@ -65,46 +69,78 @@ class MCM(NonLinearSystem):
         r1, r2, r3 = sym.symbols("r1 r2 r3")  # growth rates
         a12, a13, a21, a31 = sym.symbols("a12 a13 a21 a31")  # interaction coefficients
         d3 = sym.symbols("d3")  # death rate of effector cells
-        x1, x2, x3 = sym.symbols("x1 x2 x3")  # dimensionless variables
+        x1 = sym.Function("x1")(t)
+        x2 = sym.Function("x2")(t)
+        x3 = sym.Function("x3")(t)  # dimensionless variables
         p1, p2, p3, p4, p5, p6, p7, p8 = sym.symbols(
             "p1 p2 p3 p4 p5 p6 p7 p8"
         )  # dimensionless parameters
+        tau = sym.symbols(r"\tau")  # time scale
         T = k1 * x1
         H = k2 * x2
         E = k3 * x3
+
         rhs = [
-            (f1 := r1 * T * (1 - T / k1) - a12 * T * H - a13 * T * E),
-            (f2 := r2 * H * (1 - H / k2) - a21 * H * T),
-            (f3 := r3 * T * E / (T + k3) - a31 * E * T - d3 * E),
+            r1 * T * (1 - T / k1) - a12 * T * H - a13 * T * E,
+            r2 * H * (1 - H / k2) - a21 * H * T,
+            r3 * T * E / (T + k3) - a31 * E * T - d3 * E,
+        ]
+        self.system = [
+            sym.Eq(T.diff(t), rhs[0]).subs(t, tau/r1),
+            sym.Eq(H.diff(t), rhs[1]).subs(t, tau/r1),
+            sym.Eq(E.diff(t), rhs[2]).subs(t, tau/r1)
+        ]
+
+        rhsDimensionless = [
+            x1 * (1 - x1) - p1 * x1 * x2 - p2 * x1 * x3,
+            p3 * x2 * (1 - x2) - p4 * x2 * x1,
+            p5 * x1 * x3 / (x1 + p6) - p7 * x1 * x3 - p8 * x3,
+        ]
+        self.systemDimensionless = [
+            sym.Eq(x1.diff(t), rhsDimensionless[0]),
+            sym.Eq(x2.diff(t), rhsDimensionless[1]),
+            sym.Eq(x3.diff(t), rhsDimensionless[2]),
+        ]
+        rhs = [
+            r1 * T * (1 - T / k1) - a12 * T * H - a13 * T * E,
+            r2 * H * (1 - H / k2) - a21 * H * T,
+            ((x1 + p6) * (r3 * T * E + (T + k3) * (-a31 * E * T - d3 * E))).expand(),
         ]
         rhsDimensionless = [
-            (f1_d := x1 * (1 - x1) - p1 * x1 * x2 - p2 * x1 * x3),
-            (f2_d := p3 * x2 * (1 - x2) - p4 * x2 * x1),
-            (f3_d := p5 * x1 * x3 / (x1 + p6) - p7 * x1 * x3 - p8 * x3),
+            x1 * (1 - x1) - p1 * x1 * x2 - p2 * x1 * x3,
+            p3 * x2 * (1 - x2) - p4 * x2 * x1,
+            (
+                (T + k3) * (p5 * x1 * x3 + (x1 + p6) * (-p7 * x1 * x3 - p8 * x3))
+            ).expand(),
         ]
-        eqs = [sym.Eq(rhs[i], rhsDimensionless[i]) for i in range(len(rhs))]
-        solution1 = sym.solve_undetermined_coeffs(
-            eqs[0], [p1, p2], x1, x2, x3, dict=True
-        )[0]
-        solution2 = sym.solve_undetermined_coeffs(eqs[1], [p3, p4], x1, x2, dict=True)[
-            0
-        ]
-        solution3 = sym.solve_undetermined_coeffs(
+
+        eqs = [sym.Eq(rhs[i], rhsDimensionless[i]).expand() for i in range(len(rhs))]
+        for eq in eqs:
+            sym.pprint(eq)
+        sol1 = sym.solve_undetermined_coeffs(eqs[0], [p1, p2], x1, x2, x3, dict=True)[0]
+        sol2 = sym.solve_undetermined_coeffs(eqs[1], [p3, p4], x1, x2, dict=True)[0]
+        sol3 = sym.solve_undetermined_coeffs(
             eqs[2], [p5, p6, p7, p8], x1, x3, dict=True
         )[0]
         pvalues = {}
         params = [p1, p2, p3, p4, p5, p6, p7, p8]
-        solutions = (
-            list(solution1.values())
-            + list(solution2.values())
-            + list(solution3.values())
-        )
+        solutions = list(sol1.values()) + list(sol2.values()) + list(sol3.values())
         for parameter, solution in zip(params, solutions):
-            pvalues[str(parameter)] = solution
-        return {
-            "dimensionless_system": rhsDimensionless,
-            "parameters": pvalues,
-        }
+            pvalues[str(parameter)] = str(solution)
+        pprint(pvalues)
+
+    def printSystem(self) -> None:
+        if self.system:
+            print("Original System:")
+            for eq in self.system:
+                sym.pprint(eq, use_unicode=True)
+        if self.systemDimensionless:
+            print("Dimensionless System:")
+            for eq in self.systemDimensionless:
+                sym.pprint(eq, use_unicode=True)
+
+    def findStationaryPoints(self) -> None:
+        pass
 
     # getters
     @property
