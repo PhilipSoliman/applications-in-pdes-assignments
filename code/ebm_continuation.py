@@ -71,7 +71,7 @@ for i, ax in enumerate(axs):
         rootfinding.newtonRaphson(ebm)
 
         # perform continuation
-        T_avgs, mus, stableBranch = continuation.arclengthLoop(
+        solutions = continuation.arclengthLoop(
             ebm,
             parameter_name,
             stepsize,
@@ -81,9 +81,9 @@ for i, ax in enumerate(axs):
         )
 
         # plot results
-        mus = np.array(mus)
-        T_avgs = np.array(T_avgs)
-        stableBranch = np.array(stableBranch)
+        T_avgs = solutions["average"]
+        mus = solutions["parameter"]
+        stableBranch = solutions["stable"]
         if np.any(T_avgs < 0):
             print("Negative temperatures encountered.")
             continue
