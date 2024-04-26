@@ -46,6 +46,7 @@ class MCM(NonLinearSystem):
         self._x = None
         self.system = None
         self.systemDimensionless = None
+        self.stationaryPoints = None
         self.defineSymbols()
 
     def defineSymbols(self) -> None:
@@ -233,20 +234,20 @@ class MCM(NonLinearSystem):
             else:
                 stability.append("Saddle")
 
-        self.fixedPoints = dict(
+        self.stationaryPoints = dict(
             stationary_points=stationary_points,
             eigenvalues=eigenvalues,
             stability=stability,
         )
 
-        self.symPrint(self.fixedPoints)
+        # self.symPrint(self.stationaryPoints)
 
     def getStableStationaryPoints(self) -> list:
-        if self.fixedPoints is None:
+        if self.stationaryPoints is None:
             self.findStationaryPoints()
         stable_points = []
-        for i, point in enumerate(self.fixedPoints["stationary_points"]):
-            if self.fixedPoints["stability"][i] == "Stable":
+        for i, point in enumerate(self.stationaryPoints["stationary_points"]):
+            if self.stationaryPoints["stability"][i] == "Stable":
                 stable_points.append(np.array(list(point), dtype=float))
         return stable_points
 
