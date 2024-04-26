@@ -70,10 +70,10 @@ class Continuation:
         else:
             self.remainingRetries -= 1
             if self.remainingRetries > 0:  # refinement
+                self.stepsize /= 10
                 self.print(
                     f"{self.method} continuation did not converge within the maximum number of iterations. Retrying with smaller stepsize :{self.stepsize:.2e}..."
                 )
-                self.stepsize /= 10
                 self.continuation(nls, self.stepsize)
             else:
                 self.print(
