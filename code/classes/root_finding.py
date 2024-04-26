@@ -29,7 +29,10 @@ class RootFinding:
         self.instantiate_pbar(self.maxiter)
 
         F = nls.evaluate()
-        JF = nls.evaluate_derivative()
+        if exact:
+            JF = nls.evaluate_derivative()
+        else:
+            JF = nls.evaluate_derivative_finite_difference()
         error = np.linalg.norm(F)
         errors = []
         i = 0
