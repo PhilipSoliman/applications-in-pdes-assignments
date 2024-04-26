@@ -46,12 +46,13 @@ for stable_point in stable_points:
 
 ############### Continuation (loop) ##########################
 print("\nBuilding bifurcation diagram (continuation loop)...")
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6), sharex=True, sharey=True)
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(8, 6), sharex=True, sharey=True)
 
-for stable_point in stable_points:
+for i, stable_point in enumerate(stable_points):
     print(f"\n Continuation loop on {stable_point}")
+    ax = axs[i]
     mcm.x = stable_point
-    avgs, p1s, stableBranch = continuation.arclengthLoop(
+    solutions = continuation.arclengthLoop(
         mcm,
         parameter_name,
         stepsize,
@@ -59,10 +60,32 @@ for stable_point in stable_points:
         parameter_range,
         maxContinuations,
     )
+    averages = solutions["average"]
+    minima = solutions["minimum"]
+    maxima = solutions["maximum"]
+    p1s = solutions["parameter"]
+    stable = solutions["stable"]
 
-    ax.plot(p1s[stableBranch], avgs[stableBranch], "g-")
-    ax.plot(p1s[~stableBranch], avgs[~stableBranch], "r--")
+    # stable branches
+    ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
+    ax.plot(p1s[stable], averages[stable], "g-", label="average")
+    ax.plot(p1s[stable], minima[stable], "b-", label="minimum")
 
+    # unstable branches
+    unstable = ~stable
+    ax.plot(p1s[unstable], maxima[unstable], "r--")
+    ax.plot(p1s[unstable], averages[unstable], "g--")
+    ax.plot(p1s[unstable], minima[unstable], "b--")
+
+    if i == 0:
+        ax.set_ylabel("$x$")
+        ax.set_xlabel("$p_1$")
+        ax.legend()
+
+    # ax.set_title(r"$x_0 = (" + f"{stable_point[0]:.2f}, {stable_point[1]:.2f}, {stable_point[2]}" + r")$")
+    ax.set_title(
+        rf"$x_0  \approx ({stable_point[0]:.1f}, {stable_point[1]:.1f}, {stable_point[2]:.1f})$"
+    )
 fig.suptitle("Continuation of the stable stationary point(s)")
 fig.tight_layout()
 fname = output_dir / "mcm_continuation.png"
