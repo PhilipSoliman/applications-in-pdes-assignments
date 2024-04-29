@@ -23,7 +23,7 @@ class Continuation:
         self.setDefaultAttributes()
         self.output = False
         self.continuedSolution = None
-        self.previousSolution = None
+        self.currentSolution = None
 
     def setDefaultAttributes(self) -> None:
         self.parameterName = ""
@@ -60,7 +60,7 @@ class Continuation:
         """
         self.convergence = False
         parameter = getattr(nls, self.parameterName)
-        self.previousSolution = np.append(nls.get_current_solution(), parameter)
+        self.currentSolution = np.append(nls.get_current_solution(), parameter)
 
         if self.method == "ARC":
             errors = self.arclengthAlgorithm(nls, stepsize, self.tolerance)
@@ -182,7 +182,7 @@ class Continuation:
                     nls
                 )  # automatically updates nls to bifurcation point
                 bifurcationPoints.append(bifurcationPoint)
-                break  # TODO: implement restart + branch switching
+                # break  # TODO: implement restart + branch switching
 
         solutions = dict(
             average=np.array(solutionAverages),
@@ -278,6 +278,88 @@ class Continuation:
 
         return errors
 
+    def arclengthAlgorithm2(
+        self, nls: NonLinearSystem, stepsize, tolerance: float = 1e-5, h: float = 1e-4
+    ) -> list:
+        solution = self.currentSolution[:-1]
+        parameter = self.currentSolution[-1]
+
+        # predictor step
+        dF_param = self.derivativeParam(nls, parameter, h)
+        dF_sol = nls.evaluate_derivative()
+
+        dsol_dparam = -np.linalg.solve(dF_sol, dF_param)
+        dparam_ds = 1 / np.sqrt(1 + self.tuneFactor * np.sum(dsol_dparam**2))
+        dsol_ds = dsol_dparam * dparam_ds
+
+        predictorSolution = solution + stepsize * dsol_ds
+        predictorParameter = parameter + stepsize * dparam_ds
+
+        # update non-linear system
+        nls.set_current_solution(predictorSolution)
+        setattr(nls, self.parameterName, predictorParameter)
+
+        # corrector iterations
+        self.convergence = False
+        error = 2 * tolerance
+        i = 0
+        errors = []
+        while error > tolerance and i < self.maxiter:
+            # obtain current solution 
+            solution = nls.get_current_solution()
+            parameter = getattr(nls, self.parameterName)
+
+            # set initial values of the corrector
+            if i == 0:
+                correctorSolution = predictorSolution
+                correctorParameter = predictorParameter
+            
+            # TODO: fix dy/ds and dp/ds
+            dsol_ds = (correctorSolution - solution) / stepsize
+            dparam_ds = (correctorParameter - parameter) / stepsize
+            p = (
+                self.tuneFactor * np.sum((correctorSolution - solution) * dsol_ds)
+                + (1 - self.tuneFactor) * (correctorParameter - parameter) * dparam_ds
+                - stepsize
+            )
+            dp_dsol = 2 * self.tuneFactor * dsol_ds
+            dp_dparam = 2 * (1 - self.tuneFactor) * dparam_ds
+
+            # extended system
+            F_ext = np.append(self.F, p)
+            dF_ext = np.vstack(
+                (
+                    np.hstack((dF_sol, dF_param[:, np.newaxis])),
+                    np.hstack((dp_dsol, dp_dparam)),
+                )
+            )
+
+
+            # corrector step (basically a Newton-Raphson step on extended system)
+            correctorStep = -np.linalg.solve(dF_ext, F_ext)
+            correctorStepSolution = correctorStep[:-1]
+            correctorStepParameter = correctorStep[-1]
+
+            correctorSolution += correctorStepSolution
+            correctorParameter += correctorStepParameter
+
+            # update non linear system
+            nls.set_current_solution(correctorSolution)
+            setattr(nls, self.parameterName, correctorParameter)
+
+            # update error
+            error = np.linalg.norm(correctorStep)
+            errors.append(error)
+
+            i += 1
+
+        if error <= tolerance:
+            self.convergence = True
+            self.continuedSolution = np.append(correctorSolution, correctorParameter)
+        else:  # reset to previous solution
+            nls.set_current_solution(solution)
+            setattr(nls, self.parameterName, parameter)
+
     def derivativeParam(
         self, nls: NonLinearSystem, parameter: float, h: float
     ) -> np.ndarray:
@@ -296,11 +378,14 @@ class Continuation:
     def findBifurcation(self, nls: NonLinearSystem) -> dict:
         """
         Find the exact location of a bifurcation point using a direct method
-        see Seydel section 5.4.1 (algorithm 5.4)
+        see Seydel section 5.4.1 (algorithm 5.4). Only works for bifurcations
+        that result in a singular jacobian at the bifurcation point.
 
-        Y = [solution, parameter, h]
+        Y = (solution, parameter, h)^T
         F(Y) := branching system
         """
+        current_solution = nls.get_current_solution()
+        current_parameter = getattr(nls, self.parameterName)
         self.print("Finding bifurcation point...")
         branching_system = BranchingSystem(nls, self.parameterName)
         Y = branching_system.get_current_solution()
@@ -308,6 +393,13 @@ class Continuation:
         rootfinder = RootFinding()
         rootfinder.output = True
         _ = rootfinder.newtonRaphson(branching_system, exact=False)
+        if not rootfinder.converged:
+            self.print(
+                "Bifurcation detection failed. Resetting old initial solution..."
+            )
+            nls.set_current_solution(current_solution)
+            setattr(nls, self.parameterName, current_parameter)
+            return
         dF = nls.evaluate_derivative()
         eigvals = np.linalg.eigvals(dF)
         return dict(
