@@ -63,13 +63,17 @@ class Continuation:
         self.currentSolution = np.append(nls.get_current_solution(), parameter)
 
         if self.method == "ARC":
-            errors = self.arclengthAlgorithm(nls, stepsize, self.tolerance)
+            errors = self.arclengthAlgorithm2(nls, stepsize, self.tolerance)
         else:
             raise ValueError("Method not specified and/or implemented.")
 
         if self.convergence:
             self.stableBranch = self.checkStability(nls)
-            self.print(f"{self.method} continuation converged.")
+            self.print(
+                f"{self.method} continuation converged with stepsize {self.stepsize}."
+            )
+            self.stepsize *= 10 ** (10 - self.remainingRetries)  # reset stepsize
+            self.remainingRetries = 10
         else:
             self.remainingRetries -= 1
             if self.remainingRetries > 0:  # refinement
@@ -284,7 +288,7 @@ class Continuation:
         solution = self.currentSolution[:-1]
         parameter = self.currentSolution[-1]
 
-        # predictor step
+        # TODO: use different predictor
         dF_param = self.derivativeParam(nls, parameter, h)
         dF_sol = nls.evaluate_derivative()
 
@@ -299,44 +303,44 @@ class Continuation:
         nls.set_current_solution(predictorSolution)
         setattr(nls, self.parameterName, predictorParameter)
 
+        # set initial values of the corrector
+        correctorSolution = predictorSolution
+        correctorParameter = predictorParameter
+
         # corrector iterations
         self.convergence = False
         error = 2 * tolerance
         i = 0
         errors = []
         while error > tolerance and i < self.maxiter:
-            # obtain current solution 
-            solution = nls.get_current_solution()
-            parameter = getattr(nls, self.parameterName)
-
-            # set initial values of the corrector
-            if i == 0:
-                correctorSolution = predictorSolution
-                correctorParameter = predictorParameter
-            
-            # TODO: fix dy/ds and dp/ds
-            dsol_ds = (correctorSolution - solution) / stepsize
-            dparam_ds = (correctorParameter - parameter) / stepsize
-            p = (
-                self.tuneFactor * np.sum((correctorSolution - solution) * dsol_ds)
-                + (1 - self.tuneFactor) * (correctorParameter - parameter) * dparam_ds
-                - stepsize
-            )
-            dp_dsol = 2 * self.tuneFactor * dsol_ds
-            dp_dparam = 2 * (1 - self.tuneFactor) * dparam_ds
-
+            # TODO: make extend system into nls object and use rootfinding
             # extended system
-            F_ext = np.append(self.F, p)
-            dF_ext = np.vstack(
-                (
-                    np.hstack((dF_sol, dF_param[:, np.newaxis])),
-                    np.hstack((dp_dsol, dp_dparam)),
-                )
+            F = nls.evaluate()
+            p = (
+                self.tuneFactor * np.sum((correctorSolution - solution) ** 2)
+                + (1 - self.tuneFactor) * (correctorParameter - parameter) ** 2
+                - stepsize**2
             )
+            F_ext = np.append(F, p)
 
+            # if i == 0:  # fixed point iteration
+            #     correctorStep = F_ext
 
-            # corrector step (basically a Newton-Raphson step on extended system)
-            correctorStep = -np.linalg.solve(dF_ext, F_ext)
+            if i >= 0:  # Newton-Raphson step on extended system
+                df_dsol = nls.evaluate_derivative()
+                df_dparam = self.derivativeParam(nls, parameter, h)
+                dsol_ds = (correctorSolution - solution) / stepsize
+                dparam_ds = (correctorParameter - parameter) / stepsize
+                dp_dsol = 2 * self.tuneFactor * dsol_ds
+                dp_dparam = 2 * (1 - self.tuneFactor) * dparam_ds
+                dF_ext = np.vstack(
+                    (
+                        np.hstack((df_dsol, df_dparam[:, np.newaxis])),
+                        np.hstack((dp_dsol, dp_dparam)),
+                    )
+                )
+                correctorStep = -np.linalg.solve(dF_ext, F_ext)
+
             correctorStepSolution = correctorStep[:-1]
             correctorStepParameter = correctorStep[-1]
 

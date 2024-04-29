@@ -24,25 +24,27 @@ ebm = EBM(n_polys, n_quads, grid_resolution)
 tolerance = 1e-5  # tolerance
 maxiter = 100  # maximum number of iterations (per continuation)
 continuation = Continuation(tolerance, maxiter)
-continuation.output = False
+continuation.output = True
 parameter_name = "mu"  # parameter to be continued (should correspond to an attribute of the EBM object)
 parameter_range = (0, 100)  # range of the parametervalues of interest
-stepsize = 0.01  # 0.1  # stepsize (needs to be small, why?)
-tune_factor = 0.00001  # 0.001 # tune factor (needs to be small, why?)
+stepsize = 0.1  # 0.1  # stepsize (needs to be small, why?)
+tune_factor = 0.001  # 0.001 # tune factor (needs to be small, why?)
 maxContinuations = 100  # maximum number of continuations
 
 ############### Rootfinder settings #################
 rootfinding = RootFinding(tolerance, maxiter)
-rootfinding.output = False
+rootfinding.output = True
 
 ############### Continuation (loop) ##########################
 print("Building bifurcation diagram (continuation loop)...")
 ebm.D = 0.3
-ebm.T_coeffs[0] = 280
+ebm.T_coeffs[0] = 225
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6), sharex=True, sharey=True)
 
 # find initial solution
 rootfinding.newtonRaphson(ebm)
+T0 = ebm.T_avg()
+print(f"Initial solution: T = {T0:.3f}")
 
 # perform continuation
 solutions = continuation.arclengthLoop(
@@ -58,7 +60,7 @@ solutions = continuation.arclengthLoop(
 T_avgs = solutions["average"]
 mus = solutions["parameter"]
 stableBranch = solutions["stable"]
-ax.plot(mus[stableBranch], T_avgs[stableBranch], "g-")
+ax.plot(mus[stableBranch], T_avgs[stableBranch], "g.")
 ax.plot(mus[~stableBranch], T_avgs[~stableBranch], "r--")
 
 ax.set_ylabel(r"$\bar{T}$")
