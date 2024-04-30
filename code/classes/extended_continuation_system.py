@@ -45,31 +45,31 @@ class ExtendedSystem(NonLinearSystem):
         )
 
     def evaluate_derivative_finite_difference(self, step: float = 1e-6) -> np.ndarray:
-        # F = self.evaluate()
-        # currentSolution = self.get_current_solution()
-        # F_step = np.zeros((self.n + 1, self.n + 1))
-        # for i in range(self.n + 1):
-        #     Y = currentSolution.copy()
-        #     Y[i] += step
-        #     self.set_current_solution(Y)
-        #     F_step[i, :] = self.evaluate()
-        #     self.set_current_solution(currentSolution)
-        # dF = (F_step - F) / step
-        # return dF.T
-        df_dsol = self.nls.evaluate_derivative()
-        df_dparam = self.derivativeParam()
-        currentY = self.nls.get_current_solution()
-        currentParameter = getattr(self.nls, self.parameterName)
-        dsol_ds = (currentY - self.previousY) / self.stepsize
-        dparam_ds = (currentParameter - self.previousParameter) / self.stepsize
-        dp_dsol = 2 * self.tuneFactor * dsol_ds
-        dp_dparam = 2 * (1 - self.tuneFactor) * dparam_ds
-        dF = np.vstack(
-            (
-                np.hstack((df_dsol, df_dparam[:, np.newaxis])),
-                np.hstack((dp_dsol, dp_dparam)),
-            )
-        )
+        F = self.evaluate()
+        currentSolution = self.get_current_solution()
+        F_step = np.zeros((self.n + 1, self.n + 1))
+        for i in range(self.n + 1):
+            Y = currentSolution.copy()
+            Y[i] += step
+            self.set_current_solution(Y)
+            F_step[i, :] = self.evaluate()
+            self.set_current_solution(currentSolution)
+        dF = (F_step - F) / step
+        return dF.T
+        # df_dsol = self.nls.evaluate_derivative()
+        # df_dparam = self.derivativeParam()
+        # currentY = self.nls.get_current_solution()
+        # currentParameter = getattr(self.nls, self.parameterName)
+        # dsol_ds = (currentY - self.previousY) / self.stepsize
+        # dparam_ds = (currentParameter - self.previousParameter) / self.stepsize
+        # dp_dsol = 2 * self.tuneFactor * dsol_ds
+        # dp_dparam = 2 * (1 - self.tuneFactor) * dparam_ds
+        # dF = np.vstack(
+        #     (
+        #         np.hstack((df_dsol, df_dparam[:, np.newaxis])),
+        #         np.hstack((dp_dsol, dp_dparam)),
+        #     )
+        # )
         return dF
 
     def get_current_solution(self) -> np.ndarray:
