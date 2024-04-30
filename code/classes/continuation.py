@@ -1,5 +1,6 @@
 import numpy as np
 from branching_system import BranchingSystem
+from extended_continuation_system import ExtendedSystem
 from non_linear_system import NonLinearSystem
 from root_finding import RootFinding
 from tqdm import tqdm
@@ -15,7 +16,7 @@ class Continuation:
     - arclength (ARC)
     """
 
-    def __init__(self, tolerance=1e-5, maxiter: int = 100) -> None:
+    def __init__(self, tolerance=1e-5, maxiter: int = 10) -> None:
         self.tolerance = tolerance
         self.maxiter = maxiter
         self.maxRetries = 3
@@ -283,7 +284,7 @@ class Continuation:
         return errors
 
     def arclengthAlgorithm2(
-        self, nls: NonLinearSystem, stepsize, tolerance: float = 1e-5, h: float = 1e-4
+        self, nls: NonLinearSystem, stepsize, tolerance: float = 1e-4, h: float = 1e-4
     ) -> list:
         solution = self.currentSolution[:-1]
         parameter = self.currentSolution[-1]
@@ -293,13 +294,18 @@ class Continuation:
         predictorSolution = solution + stepsize * predictorStep[:-1]
         predictorParameter = parameter + stepsize * predictorStep[-1]
 
-        # update non-linear system
+        # update non-linear system to predictor
         nls.set_current_solution(predictorSolution)
         setattr(nls, self.parameterName, predictorParameter)
 
-        # set initial values of the corrector
-        correctorSolution = predictorSolution
-        correctorParameter = predictorParameter
+        # setup extended system
+        extendedSystem = ExtendedSystem(
+            nls, self.currentSolution, self.parameterName, stepsize, self.tuneFactor
+        )
+
+        # setup rootfinder
+        rootfinder = RootFinding(tolerance, self.maxiter)
+        rootfinder.output = False
 
         # corrector iterations
         self.convergence = False
@@ -307,53 +313,25 @@ class Continuation:
         i = 0
         errors = []
         while error > tolerance and i < self.maxiter:
-            # TODO: make extend system into nls object and use rootfinding
-            # extended system
-            F = nls.evaluate()
-            p = (
-                self.tuneFactor * np.sum((correctorSolution - solution) ** 2)
-                + (1 - self.tuneFactor) * (correctorParameter - parameter) ** 2
-                - stepsize**2
-            )
-            F_ext = np.append(F, p)
+            # fixed point iteration
+            # correctorSolution = extendedSystem.evaluate()
+            # nls.set_current_solution(correctorSolution[:-1])
+            # setattr(nls, self.parameterName, correctorSolution[-1])
 
-            if i == 0:  # fixed point iteration
-                correctorStep = F_ext
-
-            if i >= 0:  # Newton-Raphson step on extended system
-                df_dsol = nls.evaluate_derivative()
-                df_dparam = self.derivativeParam(nls, parameter, h)
-                dsol_ds = (correctorSolution - solution) / stepsize
-                dparam_ds = (correctorParameter - parameter) / stepsize
-                dp_dsol = 2 * self.tuneFactor * dsol_ds
-                dp_dparam = 2 * (1 - self.tuneFactor) * dparam_ds
-                dF_ext = np.vstack(
-                    (
-                        np.hstack((df_dsol, df_dparam[:, np.newaxis])),
-                        np.hstack((dp_dsol, dp_dparam)),
-                    )
-                )
-                correctorStep = -np.linalg.solve(dF_ext, F_ext)
-
-            correctorStepSolution = correctorStep[:-1]
-            correctorStepParameter = correctorStep[-1]
-
-            correctorSolution += correctorStepSolution
-            correctorParameter += correctorStepParameter
-
-            # update non linear system
-            nls.set_current_solution(correctorSolution)
-            setattr(nls, self.parameterName, correctorParameter)
+            # NR rootfinding
+            rootfinder.newtonRaphson(extendedSystem, exact=False)
 
             # update error
-            error = np.linalg.norm(correctorStep)
+            error = np.linalg.norm(nls.evaluate())
             errors.append(error)
 
             i += 1
 
         if error <= tolerance:
             self.convergence = True
-            self.continuedSolution = np.append(correctorSolution, correctorParameter)
+            currentSolution = nls.get_current_solution()
+            currentParameter = getattr(nls, self.parameterName)
+            self.continuedSolution = np.append(currentSolution, currentParameter)
         else:  # reset to previous solution
             nls.set_current_solution(solution)
             setattr(nls, self.parameterName, parameter)
@@ -382,8 +360,8 @@ class Continuation:
         n = df_dsol.shape[0]
         k = 0
         tangentSystem = np.zeros((n + 1, n + 1))
-        while k < n:
-            e_k = np.zeros(n+1)
+        while k < n:  # find index k such that tangentSystem is invertible
+            e_k = np.zeros(n + 1)
             e_k[k] = 1
             tangentSystem = np.vstack(
                 (np.hstack((df_dsol, df_dparam[:, np.newaxis])), [e_k])
