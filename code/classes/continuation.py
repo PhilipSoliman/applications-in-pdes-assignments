@@ -16,7 +16,7 @@ class Continuation:
     - arclength (ARC)
     """
 
-    def __init__(self, tolerance=1e-5, maxiter: int = 10) -> None:
+    def __init__(self, tolerance=1e-5, maxiter: int = 50) -> None:
         self.tolerance = tolerance
         self.maxiter = maxiter
         self.maxRetries = 3
@@ -313,11 +313,6 @@ class Continuation:
         i = 0
         errors = []
         while error > tolerance and i < self.maxiter:
-            # fixed point iteration
-            # correctorSolution = extendedSystem.evaluate()
-            # nls.set_current_solution(correctorSolution[:-1])
-            # setattr(nls, self.parameterName, correctorSolution[-1])
-
             # NR rootfinding
             rootfinder.newtonRaphson(extendedSystem, exact=False)
 
@@ -360,7 +355,7 @@ class Continuation:
         n = df_dsol.shape[0]
         k = 0
         tangentSystem = np.zeros((n + 1, n + 1))
-        while k < n:  # find index k such that tangentSystem is invertible
+        while k <= n:  # find index k such that tangentSystem is invertible
             e_k = np.zeros(n + 1)
             e_k[k] = 1
             tangentSystem = np.vstack(
@@ -370,9 +365,7 @@ class Continuation:
                 break
             k += 1
 
-        tangent = np.linalg.solve(tangentSystem, e_k)
-
-        return tangent
+        return np.linalg.solve(tangentSystem, e_k)
 
     # bifurcation detection
     def findBifurcation(self, nls: NonLinearSystem) -> dict:
