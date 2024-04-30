@@ -288,16 +288,10 @@ class Continuation:
         solution = self.currentSolution[:-1]
         parameter = self.currentSolution[-1]
 
-        # TODO: use different predictor
-        dF_param = self.derivativeParam(nls, parameter, h)
-        dF_sol = nls.evaluate_derivative()
+        predictorStep = self.predictorStep(nls)
 
-        dsol_dparam = -np.linalg.solve(dF_sol, dF_param)
-        dparam_ds = 1 / np.sqrt(1 + self.tuneFactor * np.sum(dsol_dparam**2))
-        dsol_ds = dsol_dparam * dparam_ds
-
-        predictorSolution = solution + stepsize * dsol_ds
-        predictorParameter = parameter + stepsize * dparam_ds
+        predictorSolution = solution + stepsize * predictorStep[:-1]
+        predictorParameter = parameter + stepsize * predictorStep[-1]
 
         # update non-linear system
         nls.set_current_solution(predictorSolution)
@@ -323,8 +317,8 @@ class Continuation:
             )
             F_ext = np.append(F, p)
 
-            # if i == 0:  # fixed point iteration
-            #     correctorStep = F_ext
+            if i == 0:  # fixed point iteration
+                correctorStep = F_ext
 
             if i >= 0:  # Newton-Raphson step on extended system
                 df_dsol = nls.evaluate_derivative()
@@ -377,6 +371,30 @@ class Continuation:
         # reset parameter
         setattr(nls, self.parameterName, parameter)
         return dF_param
+
+    def predictorStep(self, nls) -> np.ndarray:
+        """
+        Calculate tangent vector to branch for predictor step.
+        """
+        df_dsol = nls.evaluate_derivative()
+        parameter = self.currentSolution[-1]
+        df_dparam = self.derivativeParam(nls, parameter, 1e-4)
+        n = df_dsol.shape[0]
+        k = 0
+        tangentSystem = np.zeros((n + 1, n + 1))
+        while k < n:
+            e_k = np.zeros(n+1)
+            e_k[k] = 1
+            tangentSystem = np.vstack(
+                (np.hstack((df_dsol, df_dparam[:, np.newaxis])), [e_k])
+            )
+            if np.linalg.matrix_rank(tangentSystem) == n + 1:
+                break
+            k += 1
+
+        tangent = np.linalg.solve(tangentSystem, e_k)
+
+        return tangent
 
     # bifurcation detection
     def findBifurcation(self, nls: NonLinearSystem) -> dict:
