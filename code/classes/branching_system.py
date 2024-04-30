@@ -43,14 +43,15 @@ class BranchingSystem(NonLinearSystem):
 
     def evaluate_derivative_finite_difference(self, step: float = 1e-6) -> np.ndarray:
         F = self.evaluate()
-        current_solution = self.get_current_solution()
+        currentSolution = self.get_current_solution()
         # dF = np.zeros((2 * self.n + 1, 2 * self.n + 1))
         F_step = np.zeros((2 * self.n + 1, 2 * self.n + 1))
         for i in range(2 * self.n + 1):
-            Y = current_solution.copy()
+            Y = currentSolution.copy()
             Y[i] += step
             self.set_current_solution(Y)
             F_step[i, :] = self.evaluate()
+            self.set_current_solution(currentSolution)
         dF = (F_step - F) / step
         return dF.T
 
