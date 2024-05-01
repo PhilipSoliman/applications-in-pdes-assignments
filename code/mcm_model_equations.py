@@ -113,7 +113,7 @@ for i, stable_point in enumerate(stable_points):
     # plot bifurcations
     for bif in bifs:
         mean = np.mean(bif["solution"])
-        ax.plot(bif["parameter"], mean, "ko", label)
+        ax.plot(bif["parameter"], mean, "ko", label="bifurcation")
 
     # stable branches
     # ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
@@ -132,7 +132,7 @@ for i, stable_point in enumerate(stable_points):
         ax.legend()
 
     ax.set_title(
-        rf"$x_0  \approx ({stable_point[0]:.1f}, {stable_point[1]:.1f}, {stable_point[2]:.1f})$"
+        rf"$x_0  \approx ({stable_point[0]:.2f}, {stable_point[1]:.1f}, {stable_point[2]:.1f})$"
     )
 
 
