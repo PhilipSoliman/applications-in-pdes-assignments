@@ -1,9 +1,13 @@
 from pprint import pprint
 
+import latextable
 import matplotlib.pyplot as plt
 import numpy as np
 import sympy as sym
 from helper import pyutils
+
+# from tabulate import tabulate
+from texttable import Texttable
 
 pyutils.add_modules_to_path()
 from continuation import Continuation
@@ -28,6 +32,44 @@ print("Stable stationary points:")
 pprint(stable_points)
 rootfinder = RootFinding()
 rootfinder.output = True
+
+############### generate latex table of stationary points #####
+print("\nGenerating LaTeX table of stationary points...")
+header = [
+    r"\textbf{index}",
+    r"$\mathbf{x_1}$",
+    r"$\mathbf{x_2}$",
+    r"$\mathbf{x_3}$",
+    r"\textbf{stability}",
+]
+rows = [header]
+stationary_points = mcm.stationaryPoints
+coords = stationary_points["coords"]
+stabilities = stationary_points["stable"]
+for index, (point, stability) in enumerate(zip(coords, stabilities)):
+    x1, x2, x3 = point
+    row = [index + 1, float(x1), float(x2), float(x3), stability]
+    rows.append(row)
+table = Texttable()
+table.set_cols_align(["c"] * len(header))
+table.set_deco(Texttable.HEADER | Texttable.VLINES)
+table.set_precision(2)
+table.set_cols_dtype(
+    ["i", pyutils.scientific_fmt, pyutils.scientific_fmt, pyutils.scientific_fmt, "t"]
+)
+table.add_rows(rows)
+label = f"tab:mcm_stationary_points"
+caption = "Stationary points of the MCM model."
+
+# add position specifier & change font size
+table_str = latextable.draw_latex(table, caption=caption, label=label)
+table_str = table_str.replace(r"\begin{table}", r"\begin{table}[H]")
+
+filename = "mcm_stationary_points.tex"
+filepath = root / "report" / "tables" / filename
+with open(filepath, "w") as f:
+    f.write(table_str)
+print("Done!")
 
 ############### Continuation parameters ##################
 tolerance = 1e-5  # tolerance
@@ -71,7 +113,7 @@ for i, stable_point in enumerate(stable_points):
     # plot bifurcations
     for bif in bifs:
         mean = np.mean(bif["solution"])
-        ax.plot(bif["parameter"], mean, "ko", label="bifurcation")
+        ax.plot(bif["parameter"], mean, "ko", label)
 
     # stable branches
     # ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
