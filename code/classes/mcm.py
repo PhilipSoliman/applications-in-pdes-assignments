@@ -235,9 +235,9 @@ class MCM(NonLinearSystem):
                 stability.append("Saddle")
 
         self.stationaryPoints = dict(
-            stationary_points=stationary_points,
-            eigenvalues=eigenvalues,
-            stability=stability,
+            coords=stationary_points,
+            eigs=eigenvalues,
+            stable=stability,
         )
 
         # self.symPrint(self.stationaryPoints)
@@ -246,8 +246,8 @@ class MCM(NonLinearSystem):
         if self.stationaryPoints is None:
             self.findStationaryPoints()
         stable_points = []
-        for i, point in enumerate(self.stationaryPoints["stationary_points"]):
-            if self.stationaryPoints["stability"][i] == "Stable":
+        for i, point in enumerate(self.stationaryPoints["coords"]):
+            if self.stationaryPoints["stable"][i] == "Stable":
                 stable_points.append(np.array(list(point), dtype=float))
         return stable_points
 
