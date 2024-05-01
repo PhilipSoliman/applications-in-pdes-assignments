@@ -40,16 +40,11 @@ stepsize = 0.01  # 0.01  # stepsize (needs to be small, why?)
 tune_factor = 0.00001  # 0.001 # tune factor (needs to be small, why?)
 maxContinuations = 1000  # maximum number of continuations
 
-############### Continuation (first test) #################
-for stable_point in stable_points:
-    print(f"\nTest continuation starting at {stable_point}")
-    mcm.x = stable_point
-    errors = continuation.arclength(mcm, parameter_name, stepsize, tune_factor)
-
 ############### Continuation (loop) ##########################
 print("\nBuilding bifurcation diagram (continuation loop)...")
 fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(8, 6), sharex=True, sharey=True)
 
+bifurcations = []
 for i, stable_point in enumerate(stable_points):
     print(f"\n Continuation loop on {stable_point}")
     ax = axs[i]
@@ -68,20 +63,25 @@ for i, stable_point in enumerate(stable_points):
     maxima = solutions["maximum"]
     p1s = solutions["parameter"]
     stable = solutions["stable"]
-    bifurcation_points = solutions["bifurcations"]
-    if bifurcation_points:
-        print("Bifurcation points:")
-        pprint(bifurcation_points)
+    bifs = solutions["bifurcations"]
+
+    # add new bifurcations to list
+    bifurcations += bifs
+
+    # plot bifurcations
+    for bif in bifs:
+        mean = np.mean(bif["solution"])
+        ax.plot(bif["parameter"], mean, "ko", label="bifurcation")
 
     # stable branches
     # ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
-    ax.plot(p1s[stable], averages[stable], "g.", label="average")
+    ax.plot(p1s[stable], averages[stable], "g-", label="average")
     # ax.plot(p1s[stable], minima[stable], "b-", label="minimum")
 
     # unstable branches
     unstable = ~stable
     # ax.plot(p1s[unstable], maxima[unstable], "r--")
-    ax.plot(p1s[unstable], averages[unstable], "r.")
+    ax.plot(p1s[unstable], averages[unstable], "r--")
     # ax.plot(p1s[unstable], minima[unstable], "b--")
 
     if i == 0:
@@ -92,6 +92,13 @@ for i, stable_point in enumerate(stable_points):
     ax.set_title(
         rf"$x_0  \approx ({stable_point[0]:.1f}, {stable_point[1]:.1f}, {stable_point[2]:.1f})$"
     )
+
+
+############### Bifurcation points ##########################
+print("\nBifurcation points:")
+pprint(bifurcations)
+
+
 fig.suptitle("Continuation of the stable stationary point(s)")
 fig.tight_layout()
 fname = output_dir / "mcm_continuation.png"
