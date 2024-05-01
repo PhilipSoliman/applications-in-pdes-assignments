@@ -25,6 +25,7 @@ class Continuation:
         self.output = False
         self.continuedSolution = None
         self.currentSolution = None
+        self.previousSolution = None
 
     def setDefaultAttributes(self) -> None:
         self.parameterName = ""
@@ -60,8 +61,6 @@ class Continuation:
         performs single continuation step using the specified method.
         """
         self.convergence = False
-        parameter = getattr(nls, self.parameterName)
-        self.currentSolution = np.append(nls.get_current_solution(), parameter)
 
         if self.method == "ARC":
             errors = self.arclengthAlgorithm2(nls, stepsize, self.tolerance)
@@ -139,6 +138,8 @@ class Continuation:
         self.stableBranch = self.checkStability(nls)
         while True:
             solution = nls.get_current_solution()
+            parameter = getattr(nls, self.parameterName)
+            self.currentSolution = np.append(solution, parameter)
             average = np.mean(solution)
             solutionAverages.append(average)
             minimum = np.min(solution)
@@ -182,12 +183,21 @@ class Continuation:
                 break
 
             if old_stability != new_stability:
-                self.print("Encountered bifurcation! Determining exact location")
-                bifurcationPoint = self.findBifurcation(
-                    nls
-                )  # automatically updates nls to bifurcation point
-                bifurcationPoints.append(bifurcationPoint)
+                self.print("Bifurcation occured! Determining exact location...")
+                if self.previousSolution is not None:
+                    bifurcationPoint = self.findBifurcationIndirect(nls)
+                else:
+                    bifurcationPoint = self.findBifurcationDirect(nls)
+                if bifurcationPoint:
+                    self.print("Bifurcation point found.")
+                    bifurcationPoints.append(bifurcationPoint)
+                else:
+                    self.print("Bifurcation point not found.")
                 # break  # TODO: implement restart + branch switching
+
+            # save current solution and eigvals previous for next iteration
+            self.previousSolution = self.currentSolution
+            self.previousEigvals = self.eigvals
 
         solutions = dict(
             average=np.array(solutionAverages),
@@ -381,7 +391,7 @@ class Continuation:
     #     return
 
     # bifurcation detection
-    def findBifurcation(self, nls: NonLinearSystem) -> dict:
+    def findBifurcationDirect(self, nls: NonLinearSystem) -> dict:
         """
         Find the exact location of a bifurcation point using a direct method
         see Seydel section 5.4.1 (algorithm 5.4). Only works for bifurcations
@@ -390,22 +400,15 @@ class Continuation:
         Y = (solution, parameter, h)^T
         F(Y) := branching system
         """
-        current_solution = nls.get_current_solution()
-        current_parameter = getattr(nls, self.parameterName)
-        self.print("Finding bifurcation point...")
+        self.print("Finding bifurcation point using direct method...")
         branching_system = BranchingSystem(nls, self.parameterName)
-        Y = branching_system.get_current_solution()
-        F = branching_system.evaluate()
+        # Y = branching_system.get_current_solution()
+        # F = branching_system.evaluate()
         rootfinder = RootFinding()
         rootfinder.output = True
         _ = rootfinder.newtonRaphson(branching_system, exact=False)
         if not rootfinder.converged:
-            self.print(
-                "Bifurcation detection failed. Resetting old initial solution..."
-            )
-            nls.set_current_solution(current_solution)
-            setattr(nls, self.parameterName, current_parameter)
-            return
+            return None
         dF = nls.evaluate_derivative()
         eigvals = np.linalg.eigvals(dF)
         return dict(
@@ -415,7 +418,92 @@ class Continuation:
             type="...",  # TODO: add type of bifurcation detection
         )
 
+    def findBifurcationIndirect(self, nls: NonLinearSystem) -> dict:
+        """
+        Find the exact location of a bifurcation point using a secant method
+        see Seydel section 5.4.2 (algorithm 5.5).
+        """
+        self.print("Finding bifurcation point using indirect method...")
+        # previousSolution = self.previousSolution[:-1]
+        currentSolution = self.currentSolution[:-1]
+        previousParameter = self.previousSolution[-1]
+        currentParameter = self.currentSolution[-1]
+        previousTestFunction = Continuation.testFunction(self.previousEigvals)
+        currentTestFunction = Continuation.testFunction(self.eigvals)
+
+        approximateParameter = previousParameter + (
+            currentParameter - previousParameter
+        ) * previousTestFunction / (previousTestFunction - currentTestFunction)
+
+        # solve for third test function value
+        setattr(nls, self.parameterName, approximateParameter)
+        rootfinder = RootFinding()
+        rootfinder.output = True
+        _ = rootfinder.newtonRaphson(nls, exact=True)
+        eigvals = np.linalg.eigvals(nls.evaluate_derivative())
+        thirdTestFunction = Continuation.testFunction(eigvals)
+
+        # find more exact bifurcation parameter
+        zeta = (currentTestFunction - thirdTestFunction) / (
+            currentParameter - approximateParameter
+        )
+        gamma = (
+            (previousTestFunction - thirdTestFunction)
+            / (previousParameter - approximateParameter)
+            - zeta
+        ) / (previousParameter - currentParameter)
+        correctionPlus = (
+            -zeta
+            - gamma * (approximateParameter - currentParameter)
+            + np.sqrt(
+                (zeta + gamma * (approximateParameter - currentParameter)) ** 2
+                - 4 * thirdTestFunction * gamma
+            )
+        ) / (2 * gamma)
+        correctionMinus = (
+            -zeta
+            - gamma * (approximateParameter - currentParameter)
+            - np.sqrt(
+                (zeta + gamma * (approximateParameter - currentParameter)) ** 2
+                - 4 * thirdTestFunction * gamma
+            )
+        ) / (2 * gamma)
+        bifurcationParameter = approximateParameter + correctionPlus
+        if (
+            bifurcationParameter <= previousParameter
+            or bifurcationParameter >= currentParameter
+        ):
+            bifurcationParameter = approximateParameter + correctionMinus
+        setattr(nls, self.parameterName, bifurcationParameter)
+
+        # solve for exact bifurcation point
+        rootfinder = RootFinding()
+        rootfinder.output = True
+        _ = rootfinder.newtonRaphson(nls, exact=True)
+
+        # determine eigvals
+        dF = nls.evaluate_derivative()
+        eigvals = np.linalg.eigvals(dF)
+
+        # reset to current solution so continuation can continue
+        setattr(nls, self.parameterName, currentParameter)
+        nls.set_current_solution(currentSolution)
+
+        return dict(
+            solution=nls.get_current_solution(),
+            parameter=bifurcationParameter,
+            eigvals=eigvals,
+            type="...",  # TODO: add type of bifurcation detection
+        )
+
     # helper methods
+    @staticmethod
+    def testFunction(eigvals: np.ndarray) -> float:
+        """
+        Calculate the test function for bifurcation detection.
+        """
+        return np.max(np.real(eigvals))
+
     def checkStability(self, nls: NonLinearSystem) -> None:
         """
         Check the stability of the current solution.
