@@ -53,10 +53,6 @@ def scientific_fmt(s: float, prec: int = 2) -> str:
     return out
 
 
-number = 1.33
-print(scientific_fmt(number))
-
-
 # set standard matploylib style
 def set_style():
     fontsize = 15
