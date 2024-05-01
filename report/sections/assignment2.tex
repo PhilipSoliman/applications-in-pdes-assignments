@@ -1,6 +1,7 @@
 \section{Assignment 2}
+\todo{Introduce assignment context and goals.}
 
-\subsection{Dimensionless system}
+\subsection{Stationary points}
 For self-containment we repeat the MCM system of equations
 \begin{align*}
     T^{\prime} & =r_1 T\left(1-\frac{T}{k_1}\right)-a_{12} T H-a_{13} T E, \\
@@ -33,4 +34,44 @@ The parameters $p_i$ are specified in Table \ref{tab:mcm_parameters}
     \caption{Parameters of the dimensionless system}
     \label{tab:mcm_parameters}
 \end{table}
+
+\subsection{Continuation of stationary points}
+Table \ref{tab:mcm_stationary_points} shows the stationary points of the system. 
+\input{tables/mcm_stationary_points.tex}
+
+We observe two stable stationary points (indices 5 and 8). We continue these
+points in the parameter $ p_1 \in [0.5, 1] $ and plot the continuation in Figure \ref{fig:mcm_continuation}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/mcm_continuation.png}
+    \caption{Continuation of the stable stationary points in the parameter $p_1$,
+    point 5 (left) and point 8 (right). The former encounters a bifurcation at $p_1 \approx 0.71$}
+    \label{fig:mcm_continuation}
+\end{figure}
+
+The bifurcation that occurs during the continuation of point 5 in Figure \ref{fig:mcm_continuation} is given by
+\begin{align*}
+    \text{Bifurcation type} & : subcritical(?) \text{Hopf} \\
+    \text{Parameter} & : p_1 \\
+    \text{Critical value} & : 0.71 \\
+    \text{Eigenvalues} & : 0 \pm 0.36i, -0.53\\
+    x_1, x_2, x_3 & : 0.13, 0.67, 0.16
+\end{align*}
+This bifurcation point was found by applying an indirect method based on the interpolation of test function values, adapted from 
+Seydel's book (section 5.3.1). The particular test function used was the maximum of the real part of the eigenvalues of
+the system Jacobian.
+
+The bifurcation is Hopf-bifurcation, as a complex pair of eigenvalues crosses the imaginary axis. It is subcritical,
+as the emerging limit cycle is unstable (CHECK CHARACTERISATION). 
+
+\todo{Calculate period of limit cycle.}
+
+\subsection{Continuation of limit cycle}
+\todo{describe continuation of limit cycle.}
+
+\subsection{Period doubling bifurcations}
+\todo{continue period doubling bifurcations.}
+\todo{give formula to predict period doubling bifurcations.}
+
 \subsection{Conclusion}
+\todo{describe main results.}
