@@ -19,6 +19,7 @@ def add_modules_to_path() -> None:
     # path.append(str(root / "code" / "helper"))
     # path.append(str(root / "code" / "tests"))
 
+
 # get CLI
 def get_cli_args() -> dict:
     args_d = {}
@@ -39,17 +40,21 @@ def scientific_fmt(s: float, prec: int = 2) -> str:
     specifier = f"{{:.{prec}e}}"
     scientific_str = specifier.format(s)
     mantissa, exponent = scientific_str.split("e")
+    print(mantissa, exponent)
     if exponent[0] == "+":
         sign = ""
     elif exponent[0] == "-":
         sign = "-"
-    if exponent[1] == "0":
-        exponent = exponent[2:]
-    if exponent == "0":
+    exponent = int(exponent[1:])
+    if exponent == 0:
         out = mantissa
     else:
-        out = mantissa + r"$\times 10^{" + sign + exponent + "}$"
+        out = mantissa + r"$\times 10^{" + sign + str(exponent) + "}$"
     return out
+
+
+number = 1.33
+print(scientific_fmt(number))
 
 
 # set standard matploylib style
