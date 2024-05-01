@@ -291,8 +291,8 @@ class Continuation:
 
         predictorStep = self.predictorStep(nls)
 
-        predictorSolution = solution + stepsize * predictorStep[:-1]
-        predictorParameter = parameter + stepsize * predictorStep[-1]
+        predictorSolution = solution + 1 * predictorStep[:-1]
+        predictorParameter = parameter + 1 * predictorStep[-1]
 
         # update non-linear system to predictor
         nls.set_current_solution(predictorSolution)
@@ -349,23 +349,36 @@ class Continuation:
         """
         Calculate tangent vector to branch for predictor step.
         """
-        df_dsol = nls.evaluate_derivative()
-        parameter = self.currentSolution[-1]
-        df_dparam = self.derivativeParam(nls, parameter, 1e-4)
-        n = df_dsol.shape[0]
-        k = 0
-        tangentSystem = np.zeros((n + 1, n + 1))
-        while k <= n:  # find index k such that tangentSystem is invertible
-            e_k = np.zeros(n + 1)
-            e_k[k] = 1
-            tangentSystem = np.vstack(
-                (np.hstack((df_dsol, df_dparam[:, np.newaxis])), [e_k])
-            )
-            if np.linalg.matrix_rank(tangentSystem) == n + 1:
-                break
-            k += 1
+        # df_dsol = nls.evaluate_derivative()
+        # parameter = self.currentSolution[-1]
+        # df_dparam = self.derivativeParam(nls, parameter, 1e-4)
+        # n = df_dsol.shape[0]
+        # k = 0
+        # tangentSystem = np.zeros((n + 1, n + 1))
+        # while k <= n:  # find index k such that tangentSystem is invertible
+        #     e_k = np.zeros(n + 1)
+        #     e_k[k] = 1
+        #     tangentSystem = np.vstack(
+        #         (np.hstack((df_dsol, df_dparam[:, np.newaxis])), [e_k])
+        #     )
+        #     if np.linalg.matrix_rank(tangentSystem) == n + 1:
+        #         break
+        #     k += 1
 
-        return np.linalg.solve(tangentSystem, e_k)
+        # return np.linalg.solve(tangentSystem, e_k)
+        parameter = self.currentSolution[-1]
+        dF_param = self.derivativeParam(nls, parameter, 1e-4)
+        dF_sol = nls.evaluate_derivative()
+
+        dsol_dparam = -np.linalg.solve(dF_sol, dF_param)
+        dparam_ds = 1 / np.sqrt(1 + self.tuneFactor * np.sum(dsol_dparam**2))
+        dsol_ds = dsol_dparam * dparam_ds
+
+        return np.append(dsol_ds, dparam_ds)
+
+    # def predictorStepSecant(self) -> np.ndarray:
+
+    #     return
 
     # bifurcation detection
     def findBifurcation(self, nls: NonLinearSystem) -> dict:
