@@ -26,6 +26,8 @@ sys = mcm.constructSystem()
 stable_points = mcm.getStableStationaryPoints()
 print("Stable stationary points:")
 pprint(stable_points)
+rootfinder = RootFinding()
+rootfinder.output = True
 
 ############### Continuation parameters ##################
 tolerance = 1e-5  # tolerance
@@ -34,7 +36,7 @@ continuation = Continuation(tolerance, maxiter)
 continuation.output = True
 parameter_name = "p1"  # parameter to be continued (should correspond to an attribute of the EBM object)
 parameter_range = (0.5, 1)  # range of the parametervalues of interest
-stepsize = 0.01  # 0.1  # stepsize (needs to be small, why?)
+stepsize = 0.01  # 0.01  # stepsize (needs to be small, why?)
 tune_factor = 0.00001  # 0.001 # tune factor (needs to be small, why?)
 maxContinuations = 1000  # maximum number of continuations
 
@@ -52,6 +54,7 @@ for i, stable_point in enumerate(stable_points):
     print(f"\n Continuation loop on {stable_point}")
     ax = axs[i]
     mcm.x = stable_point
+    rootfinder.newtonRaphson(mcm)
     solutions = continuation.arclengthLoop(
         mcm,
         parameter_name,
@@ -71,15 +74,15 @@ for i, stable_point in enumerate(stable_points):
         pprint(bifurcation_points)
 
     # stable branches
-    ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
-    ax.plot(p1s[stable], averages[stable], "g-", label="average")
-    ax.plot(p1s[stable], minima[stable], "b-", label="minimum")
+    # ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
+    ax.plot(p1s[stable], averages[stable], "g.", label="average")
+    # ax.plot(p1s[stable], minima[stable], "b-", label="minimum")
 
     # unstable branches
     unstable = ~stable
-    ax.plot(p1s[unstable], maxima[unstable], "r--")
-    ax.plot(p1s[unstable], averages[unstable], "g--")
-    ax.plot(p1s[unstable], minima[unstable], "b--")
+    # ax.plot(p1s[unstable], maxima[unstable], "r--")
+    ax.plot(p1s[unstable], averages[unstable], "r.")
+    # ax.plot(p1s[unstable], minima[unstable], "b--")
 
     if i == 0:
         ax.set_ylabel("$x$")
