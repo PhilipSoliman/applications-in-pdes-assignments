@@ -1,5 +1,36 @@
 \section{Assignment 2}
 
-\subsection{Introduction}
-
+\subsection{Dimensionless system}
+For self-containment we repeat the MCM system of equations
+\begin{align*}
+    T^{\prime} & =r_1 T\left(1-\frac{T}{k_1}\right)-a_{12} T H-a_{13} T E, \\
+    H^{\prime} & =r_2 H\left(1-\frac{H}{k_2}\right)-a_{21} T H, \\
+    E^{\prime} & =\frac{r_3 T E}{T+k_3}-a_{31} T E-d_3 E ,
+\end{align*}
+and its dimensionless form
+\begin{align*}
+    & x_1^{\prime}=x_1\left(1-x_1\right)-p_1 x_1 x_2-p_2 x_1 x_3, \\
+    & x_2^{\prime}=p_3 x_2\left(1-x_2\right)-p_4 x_1 x_2, \\
+    & x_3^{\prime}=\frac{p_5 x_1 x_3}{x_1+p_6}-p_7 x_1 x_3-p_8 x_3 .
+\end{align*}
+The parameters $p_i$ are specified in Table \ref{tab:mcm_parameters}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        Parameter   & Definition                & description           & Value \\
+        \hline
+        $p_1$       & $\frac{a_{12}k_2}{r_1}$     & T->H competition      & 0.5 \\
+        $p_2$       & $\frac{a_{31}k_1}{r_1}$     & E->T killing          & 2.5 \\
+        $p_3$       & $\frac{r_2}{r_1}      $     & H-T growth ratio      & 0.6 \\
+        $p_4$       & $\frac{a_{21}k_1}{r_1}$     & T->H inactivation     & 1.5 \\
+        $p_5$       & $\frac{r_3k_2}{r_1}   $     & T->E stimulation      & 4.5 \\
+        $p_6$       & $\frac{k_3}{k_1}      $     & E-T capacity ratio    & 1.0 \\
+        $p_7$       & $\frac{a_{31}k_3}{r_1}$     & T->E inactivation     & 0.2 \\
+        $p_8$       & $\frac{d_3}{r_1}      $     & E natural death       & 0.5 \\
+        \hline
+    \end{tabular}
+    \caption{Parameters of the dimensionless system}
+    \label{tab:mcm_parameters}
+\end{table}
 \subsection{Conclusion}
