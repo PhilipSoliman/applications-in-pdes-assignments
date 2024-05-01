@@ -27,18 +27,18 @@ continuation = Continuation(tolerance, maxiter)
 continuation.output = True
 parameter_name = "mu"  # parameter to be continued (should correspond to an attribute of the EBM object)
 parameter_range = (0, 100)  # range of the parametervalues of interest
-stepsize = 0.1  # 0.1  # stepsize (needs to be small, why?)
-tune_factor = 0.001  # 0.001 # tune factor (needs to be small, why?)
-maxContinuations = 100  # maximum number of continuations
+stepsize =  1 # 0.1  # stepsize (needs to be small, why?)
+tune_factor = 0.0005  # 0.001 # tune factor (needs to be small, why?)
+maxContinuations = 1000  # maximum number of continuations
 
 ############### Rootfinder settings #################
 rootfinding = RootFinding(tolerance, maxiter)
-rootfinding.output = True
+rootfinding.output = False
 
 ############### Continuation (loop) ##########################
 print("Building bifurcation diagram (continuation loop)...")
 ebm.D = 0.3
-ebm.T_coeffs[0] = 225
+ebm.T_coeffs[0] = 230
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6), sharex=True, sharey=True)
 
 # find initial solution
