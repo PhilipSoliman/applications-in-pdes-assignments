@@ -40,7 +40,6 @@ def scientific_fmt(s: float, prec: int = 2) -> str:
     specifier = f"{{:.{prec}e}}"
     scientific_str = specifier.format(s)
     mantissa, exponent = scientific_str.split("e")
-    print(mantissa, exponent)
     if exponent[0] == "+":
         sign = ""
     elif exponent[0] == "-":
