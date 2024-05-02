@@ -1,3 +1,4 @@
+import json
 from pprint import pprint
 
 import latextable
@@ -17,6 +18,9 @@ from root_finding import RootFinding
 # set figure output directory
 root = pyutils.get_root()
 output_dir = root / "report" / "figures"
+
+# data folder
+data_dir = root / "code" / "data"
 
 # set standard matplotlib style
 pyutils.set_style()
@@ -83,7 +87,7 @@ continuation = Continuation(tolerance, maxiter)
 continuation.output = True
 parameter_name = "p1"  # parameter to be continued (should correspond to an attribute of the EBM object)
 parameter_range = (0.5, 1)  # range of the parametervalues of interest
-stepsize = 0.01  # 0.01  # stepsize (needs to be small, why?)
+stepsize = 0.001  # 0.01  # stepsize (needs to be small, why?)
 tune_factor = 0.00001  # 0.001 # tune factor (needs to be small, why?)
 maxContinuations = 1000  # maximum number of continuations
 
@@ -145,27 +149,18 @@ for i, stable_point in enumerate(stable_points):
 print("\nBifurcation points:")
 pprint(bifurcations)
 
+# save bifurcations to file as json object
+filename = "mcm_bifurcations.json"
+filepath = data_dir / filename
+for bif in bifurcations:
+    solution = bif["solution"].tolist()
+    parameter = bif["parameter"].tolist()
+    out = dict(solution=solution, parameter=parameter)
+    with open(filepath, "w") as f:
+        json.dump(out, f, indent=4)
+
 
 fig.suptitle("Continuation of the stable stationary point(s)")
 fig.tight_layout()
 fname = output_dir / "mcm_continuation.png"
 plt.savefig(fname, bbox_inches="tight", dpi=300)
-
-
-############### plot of periodic solutions ##################
-print("\nPlotting periodic solutions...")
-
-# set to bifurcation point
-mcm.x = bifurcations[0]["solution"]
-mcm.p1 = bifurcations[0]["parameter"]
-rootfinder.newtonRaphson(mcm)
-
-# find periodic solutions
-from scipy.integrate import solve_bvp
-
-def fun(t: np.ndarray, y: np.ndarray) -> np.ndarray:
-    x1, x2, x3, phi_1, phi_2, phi_3 = y
-    mcm.x = x
-    mcm.p1 = p1
-
-    return mcm.evulate()
