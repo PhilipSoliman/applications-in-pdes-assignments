@@ -64,6 +64,11 @@ caption = "Stationary points of the MCM model."
 # add position specifier & change font size
 table_str = latextable.draw_latex(table, caption=caption, label=label)
 table_str = table_str.replace(r"\begin{table}", r"\begin{table}[H]")
+table_str = table_str.replace(r"{c|", r"{|c|")
+table_str = table_str.replace(r"|c}", r"|c|}" + "\n\t\t\t" + r"\hline")
+table_str = table_str.replace(
+    r"\end{tabular}", "\t" + r"\hline" + "\n\t\t" + r"\end{tabular}"
+)
 
 filename = "mcm_stationary_points.tex"
 filepath = root / "report" / "tables" / filename
@@ -145,3 +150,22 @@ fig.suptitle("Continuation of the stable stationary point(s)")
 fig.tight_layout()
 fname = output_dir / "mcm_continuation.png"
 plt.savefig(fname, bbox_inches="tight", dpi=300)
+
+
+############### plot of periodic solutions ##################
+print("\nPlotting periodic solutions...")
+
+# set to bifurcation point
+mcm.x = bifurcations[0]["solution"]
+mcm.p1 = bifurcations[0]["parameter"]
+rootfinder.newtonRaphson(mcm)
+
+# find periodic solutions
+from scipy.integrate import solve_bvp
+
+def fun(t: np.ndarray, y: np.ndarray) -> np.ndarray:
+    x1, x2, x3, phi_1, phi_2, phi_3 = y
+    mcm.x = x
+    mcm.p1 = p1
+
+    return mcm.evulate()
