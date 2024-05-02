@@ -1,8 +1,10 @@
 import numpy as np
+from bcolors import bcolors
 from branching_system import BranchingSystem
 from extended_continuation_system import ExtendedSystem
 from non_linear_system import NonLinearSystem
 from root_finding import RootFinding
+from scipy.integrate import solve_bvp, solve_ivp
 from tqdm import tqdm
 
 
@@ -159,7 +161,8 @@ class Continuation:
             i += 1
 
             self.print(
-                f"Continuation step {i}: {self.parameterName} = {parameter}, avg = {average:.2e}, min = {minimum:.2e}, max = {maximum:.2e}, stable = {self.stableBranch}"
+                f"Continuation step {i}: {self.parameterName} = {parameter}, avg = {average:.2e}, min = {minimum:.2e}, max = {maximum:.2e}, stable = {self.stableBranch} \n"
+                + f"eigvals = {self.eigvals}"
             )
 
             if not self.convergence:
@@ -480,6 +483,7 @@ class Continuation:
         rootfinder = RootFinding()
         rootfinder.output = True
         _ = rootfinder.newtonRaphson(nls, exact=True)
+        bifurcationPoint = nls.get_current_solution()
 
         # determine eigvals
         dF = nls.evaluate_derivative()
@@ -490,11 +494,162 @@ class Continuation:
         nls.set_current_solution(currentSolution)
 
         return dict(
-            solution=nls.get_current_solution(),
-            parameter=bifurcationParameter,
+            solution=bifurcationPoint,
+            parameter=approximateParameter,
             eigvals=eigvals,
             type="...",  # TODO: add type of bifurcation detection
         )
+
+    def findFirstLimitCycle(self, nls: NonLinearSystem, delta_0: float = 0.02):
+        """
+        Find a limit cycle starting from a bifurcation point.
+        """
+        self.nls = nls
+        solution = self.nls.get_current_solution()
+        parameter = getattr(self.nls, self.parameterName)
+        self.currentJacobian = self.nls.evaluate_derivative()
+        currentEigs = np.linalg.eigvals(self.currentJacobian)
+        self.imaginaryPartHopfEig = np.max(
+            [np.imag(eig) for eig in currentEigs if np.imag(eig) != 0]
+        )
+        # TODO: implement predictor to switch to other branch
+        # bsys = BranchingSystem(self.nls, self.parameterName)
+        # tangent = bsys.h
+        # k = bsys.k
+        # y_k = self.nls.get_current_solution()[k]
+        # delta = delta_0 * max(1, abs(y_k))
+        # predictors = [solution]
+
+        # time span
+        t_span = (0, 1)
+        t_eval = np.linspace(*t_span, 2)
+        self.n = len(solution)
+
+        # initial guess
+        y_0 = np.zeros((2 * self.n + 2, t_eval.size))
+
+        # initial guess solution at t=0
+        y_0[: self.n, 0] = solution
+
+        # initial guess for h1 at t=0
+        y_0[self.n : 2 * self.n, 0] = 1
+
+        # values for parameter
+        y_0[2 * self.n, 0] = parameter  # t=0
+        # y_0[2 * self.n, 1] = parameter  # t=1
+
+        # period guess
+        y_0[2 * self.n + 1, 0] = 18  # 2 * np.pi / self.imaginaryPartHopfEig  # at t=0
+        y_0[2 * self.n + 1, 1] = 0
+
+        # solve boundary value problem
+        sol = solve_bvp(self.BVPrhs, self.BVPbcs, t_eval, y_0)
+        if sol.status == 0:
+            self.print(bcolors.OKGREEN + sol.message + bcolors.ENDC)
+        else:
+            self.print(bcolors.WARNING + sol.message + bcolors.ENDC)
+
+        return sol
+
+    def BVPrhs(self, t: np.ndarray, y: np.ndarray) -> np.ndarray:
+        solution = y[: self.n]
+        h = y[self.n : 2 * self.n]
+        parameter = y[2 * self.n]
+        period = y[2 * self.n + 1]
+
+        self.nls.set_current_solution(solution)
+        setattr(self.nls, self.parameterName, parameter)
+        f = self.nls.evaluate()
+
+        df = self.nls.evaluate_derivative_vectorized()
+        fh = np.einsum("ijk, ik ->ij", df, h.T)
+
+        k = t.size
+        zero = np.zeros(k)
+        return np.vstack((period * f, period * fh.T, zero, zero))
+
+    def BVPbcs(self, ya: np.ndarray, yb: np.ndarray) -> np.ndarray:
+        """
+        Residual of the periodic boundary conditions
+        """
+        solution_a = ya[: self.n]
+        h_a = ya[self.n : 2 * self.n]
+        solution_b = yb[: self.n]
+        h_b = yb[self.n : 2 * self.n]
+
+        # return to original solution
+        df = self.currentJacobian
+        df1 = df[0, :]
+        return np.concatenate(
+            (solution_a - solution_b, h_a - h_b, [np.sum(df1 * h_a)], [h_a[0] - 1])
+        )
+
+    def findNextLimitCycle(self, nls: NonLinearSystem, delta_0: float = 0.02):
+        """
+        Find a nearby limit cycle starting from a bifurcation or any cycle on the corresponding branch.
+        """
+        self.nls = nls
+        self.oldSolution = self.nls.get_current_solution()
+        self.oldParameter = getattr(self.nls, self.parameterName)
+        currentJacobian = self.nls.evaluate_derivative()
+        self.currentF = self.nls.evaluate()
+        currentEigs = np.linalg.eigvals(currentJacobian)
+        self.imaginaryPartHopfEig = np.max(
+            [np.imag(eig) for eig in currentEigs if np.imag(eig) != 0]
+        )
+
+        # time span
+        t_span = (0, 1)
+        t_eval = np.linspace(*t_span, 2)
+        self.n = len(self.oldSolution)
+
+        # initial guess
+        y_0 = np.zeros((self.n + 2, t_eval.size))
+
+        # initial guess solution at t=0
+        y_0[: self.n, 0] = self.oldSolution
+
+        # initial guess for the period
+        y_0[self.n, 0] = 16
+
+        # initial guess for the parameter
+        y_0[self.n + 1, 0] = self.oldParameter
+
+        # solve boundary value problem
+        sol = solve_bvp(self.BVPrhs2, self.BVPbcs2, t_eval, y_0)
+        if sol.status == 0:
+            self.print(bcolors.OKGREEN + sol.message + bcolors.ENDC)
+        else:
+            self.print(bcolors.WARNING + sol.message + bcolors.ENDC)
+
+        return sol
+
+    def BVPrhs2(self, t: np.ndarray, y: np.ndarray) -> np.ndarray:
+        solution = y[: self.n]
+        period = y[self.n]
+        parameter = y[self.n + 1]
+        setattr(self.nls, self.parameterName, parameter)
+        self.nls.set_current_solution(solution)
+        f = self.nls.evaluate()
+        k = t.size
+        zero = np.zeros(k)
+        return np.vstack((period * f, zero, zero))
+
+    def BVPbcs2(self, ya: np.ndarray, yb: np.ndarray) -> np.ndarray:
+        """
+        Residual of the periodic boundary conditions
+        """
+        solution_a = ya[: self.n]
+        solution_b = yb[: self.n]
+        parameter = ya[self.n + 1]
+        f_1 = self.currentF[0]
+        return np.concatenate((solution_a - solution_b, [parameter - self.oldParameter], [f_1]))
+
+    def BVPphase(self, y: np.ndarray, index: int = 0) -> float:
+        """
+        Residual of the phase condition
+        """
+        return y[index] - self.oldSolution[index]
 
     # helper methods
     @staticmethod
