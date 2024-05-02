@@ -61,8 +61,14 @@ This bifurcation point was found by applying an indirect method based on the int
 Seydel's book (section 5.3.1). The particular test function used was the maximum of the real part of the eigenvalues of
 the system Jacobian.
 
-The bifurcation is Hopf-bifurcation, as a complex pair of eigenvalues crosses the imaginary axis. It is subcritical,
-as the emerging limit cycle is unstable (CHECK CHARACTERISATION). 
+The bifurcation is a Hopf-bifurcation, as a complex pair of eigenvalues crosses the imaginary axis with non-zero velocity
+That is to say, the eigenvalues of the system jacobian at the continuation step dircetly after the bifurcation are
+\begin{align*}
+    0.007 \pm 0.355i, -0.54
+\end{align*},
+which shows the eigenvalues pases through the imaginary axis with non-zero velocity.
+
+Additionally, it is subcritical, as the emerging limit cycle is unstable (CHECK CHARACTERISATION). 
 
 \todo{Calculate period of limit cycle.}
 
