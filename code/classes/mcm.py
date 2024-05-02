@@ -100,7 +100,9 @@ class MCM(NonLinearSystem):
         )
 
     def evaluate_derivative(self) -> np.ndarray:
-        x1, x2, x3 = self.x
+        x1 = self.x[0]
+        x2 = self.x[1]
+        x3 = self.x[2]
         return np.array(
             [
                 [
@@ -118,6 +120,43 @@ class MCM(NonLinearSystem):
                 ],
             ]
         )
+
+    def evaluate_derivative_vectorized(self, h: float = 1e-6) -> np.ndarray:
+        """same as above but now for x1, x2, x3 being vectors"""
+        x1 = self.x[0]
+        x2 = self.x[1]
+        x3 = self.x[2]
+        df11 = -self.p1 * x2 - self.p2 * x3 - 2 * x1 + 1
+        df12 = -self.p1 * x1
+        df13 = -self.p2 * x1
+        df21 = -self.p4 * x2
+        df22 = self.p3 * (1 - x2) - self.p3 * x2 - self.p4 * x1
+        df23 = np.zeros_like(x1)
+        df31 = (
+            self.p5 * x3 / (self.p6 + x1)
+            - self.p5 * x1 * x3 / (self.p6 + x1) ** 2
+            - self.p7 * x3
+        )
+        df32 = np.zeros_like(x1)
+        df33 = self.p5 * x1 / (self.p6 + x1) - self.p7 * x1 - self.p8
+        out = np.vstack(
+            (
+                np.hstack((df11, df12, df13)),
+                np.hstack((df21, df22, df23)),
+                np.hstack((df31, df32, df33)),
+            )
+        )
+        out = np.zeros((len(x1), 3, 3))
+        out[:, 0, 0] = df11
+        out[:, 0, 1] = df12
+        out[:, 0, 2] = df13
+        out[:, 1, 0] = df21
+        out[:, 1, 1] = df22
+        out[:, 1, 2] = df23
+        out[:, 2, 0] = df31
+        out[:, 2, 1] = df32
+        out[:, 2, 2] = df33
+        return out
 
     def evaluate_derivative_finite_difference(self, h: float = 1e-6) -> np.ndarray:
         raise NotImplementedError("This method is not implemented yet.")
