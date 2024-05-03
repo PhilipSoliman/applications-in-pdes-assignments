@@ -122,7 +122,7 @@ cycles = []
 while cycle_parameter <= 1:
     print(f"Continuing limit cycle with parameter {cycle_parameter}")
     # set initial guess for next limit cycle
-    mcm.x = cycle_point + 0.13 * h_0
+    mcm.x = cycle_point + 0.05 * h_0
     mcm.p1 = cycle_parameter
 
     # find next limit cycle
@@ -139,7 +139,7 @@ while cycle_parameter <= 1:
     )
 
     # store solution
-    solutions.append(cycle_point)
+    solutions.append(cycle_point.tolist())
     parameters.append(cycle_parameter)
     periods.append(cycle_period)
 
@@ -147,16 +147,24 @@ while cycle_parameter <= 1:
     t_span = (0, cycle_period)
     t_eval = np.linspace(*t_span, 1000)
     sol = solve_ivp(fun, t_span, cycle_point, t_eval=t_eval, vectorized=True)
-    cycles.append(sol.y)
+    cycles.append(sol.y.tolist())
 
 ################## plot limit cycles ##################
-for sol in cycles:
-    k = sol.shape[1]
+for cycle in cycles:
+    k = len(cycle[0])
     colors = plt.cm.viridis(np.linspace(0, 1, k))
-    ax.scatter(sol[0], sol[1], sol[2], "o", color=colors)
+    ax.scatter(cycle[0], cycle[1], cycle[2], "o", color=colors)
 
 ax.set_xlabel("$x_1$")
 ax.set_ylabel("$x_2$")
 ax.set_zlabel("$x_3$")
 
 plt.show()
+
+################### save limit cycles to file ##################
+filename = "mcm_limit_cycles.json"
+filepath = data_dir / filename
+for bif in bifurcations:
+    out = dict(points=solutions, parameter=parameters, periods=periods, cycles=cycles)
+    with open(filepath, "w") as f:
+        json.dump(out, f, indent=4)
