@@ -65,50 +65,6 @@ print("\nFinding limit cycle starting from bifurcation point...")
 cycle = continuation.shootingMethod(mcm, period_guess=18)
 print(cycle)
 
-
-# integrate over one period
-# mcm.x = cycle_point
-# mcm.p1 = cycle_parameter
-# t_span = (0, 8 * cycle_period)
-# t_eval = np.linspace(*t_span, 1000)
-
-# sol = solve_ivp(fun, t_span, cycle_point, t_eval=t_eval, vectorized=True)
-
-# 3d plot of periodic solution using color gradient to rerpesent time
-
-# k = sol.y.shape[1]
-# colors = plt.cm.viridis(np.linspace(0, 1, k))
-# ax.scatter(sol.y[0], sol.y[1], sol.y[2], "o", color=colors)
-
-# mean = np.mean(sol.y)
-# print(mean)
-
-######################## find next limit cycle ########################
-# print("\nFinding next limit cycle...")
-# mcm.x = cycle_point + 0.1 * h_0
-# mcm.p1 = cycle_parameter
-# cycle = continuation.shootingMethod(mcm, period_guess=cycle_period)
-# print(cycle)
-
-# # extract point on limit cycle
-# cycle_point = cycle[:n]
-# h_0 = cycle[n : 2 * n]
-# cycle_parameter = cycle[2 * n]
-# cycle_period = cycle[2 * n + 1]
-# mcm.p1 = cycle_parameter
-
-# # integrate over one period
-# t_span = (0, cycle_period)
-# t_eval = np.linspace(*t_span, 1000)
-
-# sol = solve_ivp(fun, t_span, cycle_point, t_eval=t_eval, vectorized=True)
-
-# k = sol.y.shape[1]
-# colors = plt.cm.viridis(np.linspace(0, 1, k))
-# ax.scatter(sol.y[0], sol.y[1], sol.y[2], "o", color=colors)
-
-################## continue limit cycles ##################
-# print("\nContinuing limit cycles...")
 solutions = []
 parameters = []
 periods = []
