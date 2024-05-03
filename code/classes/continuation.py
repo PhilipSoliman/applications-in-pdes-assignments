@@ -835,3 +835,32 @@ class Continuation:
             (h0 - h1, solution0 - solution1, [h0[0] - 1], [np.sum(h0 * df[0])])
         )
 
+    def monodromyMatrix(
+        self, nls, cycle_point: np.ndarray, cycle_parameter: np.ndarray, cycle_period: float
+    ) -> np.ndarray:
+        """
+        Calculate the monodromy matrix of a limit cycle.
+        """
+        self.nls = nls
+        self.n = len(cycle_point)
+        self.t_span = (0, 1)
+        t_eval = np.linspace(*self.t_span, 300)
+
+        # obtain columns of monodromy matrix
+        monodromy = np.zeros((self.n, self.n))
+        for j in range(self.n):
+            y_0 = np.zeros(2 * self.n + 2)
+            y_0[: self.n] = cycle_point
+            y_0[self.n + j] = 1
+            y_0[2 * self.n] = cycle_parameter
+            y_0[2 * self.n + 1] = cycle_period
+            sol = solve_ivp(self.shootingMethodRHS, self.t_span, y_0, t_eval=t_eval, vectorized=False)
+            h = sol.y[self.n : 2 * self.n, -1]
+            monodromy[:, j] = h
+        return monodromy
+
+    def calculateFloquetMultipliers(self, monodromy_matrix: np.ndarray):
+        """
+        Calculate the Floquet multipliers of a limit cycle.
+        """
+        pass
