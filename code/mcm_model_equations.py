@@ -93,7 +93,7 @@ maxContinuations = 1000  # maximum number of continuations
 
 ############### Continuation (loop) ##########################
 print("\nBuilding bifurcation diagram (continuation loop)...")
-fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(8, 6), sharex=True, sharey=True)
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(8, 6))  # sharex=True, sharey=True)
 
 bifurcations = []
 for i, stable_point in enumerate(stable_points):
@@ -135,11 +135,6 @@ for i, stable_point in enumerate(stable_points):
     ax.plot(p1s[unstable], averages[unstable], "r--")
     # ax.plot(p1s[unstable], minima[unstable], "b--")
 
-    if i == 0:
-        ax.set_ylabel("$x$")
-        ax.set_xlabel("$p_1$")
-        ax.legend()
-
     ax.set_title(
         rf"$x_0  \approx ({stable_point[0]:.2f}, {stable_point[1]:.1f}, {stable_point[2]:.1f})$"
     )
@@ -158,6 +153,23 @@ for bif in bifurcations:
     out = dict(solution=solution, parameter=parameter)
     with open(filepath, "w") as f:
         json.dump(out, f, indent=4)
+
+
+############### retrieve limit cycles and add to continuation plot ##################
+# load limit cycles from file
+filename = "mcm_limit_cycles.json"
+filepath = data_dir / filename
+with open(filepath, "r") as f:
+    data = json.load(f)
+    solutions = data["points"]
+    parameters = data["parameter"]
+    periods = data["periods"]
+    cycles = data["cycles"]
+
+axs[0].plot(parameters, np.mean(solutions, 1), "kx", label="limit cycle")
+axs[0].set_ylabel("$x$")
+axs[0].set_xlabel("$p_1$")
+axs[0].legend(fontsize="small",loc="upper right")
 
 
 fig.suptitle("Continuation of the stable stationary point(s)")
