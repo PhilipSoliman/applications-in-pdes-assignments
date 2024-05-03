@@ -786,7 +786,7 @@ class Continuation:
             full_output=True,
         )
         if ier == 1:
-            pprint(infodict)
+            # pprint(infodict)
             self.print(bcolors.OKGREEN + msg + bcolors.ENDC)
         else:
             self.print(bcolors.WARNING + msg + bcolors.ENDC)
