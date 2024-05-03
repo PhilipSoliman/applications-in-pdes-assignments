@@ -165,11 +165,19 @@ with open(filepath, "r") as f:
     parameters = data["parameter"]
     periods = data["periods"]
     cycles = data["cycles"]
+    stable = data["stable"]
 
-axs[0].plot(parameters, np.mean(solutions, 1), "kx", label="limit cycle")
+# stable limit cycles
+stable = np.array(stable).astype(bool)
+parameters = np.array(parameters)
+solutions = np.array(solutions)
+axs[0].plot(parameters[stable], np.mean(solutions[stable], 1), "gx", label="stable limit cycle")
+axs[0].plot(
+    parameters[~stable], np.mean(solutions[~stable], 1), "rx", label="unstable limit cycle"
+)
 axs[0].set_ylabel("$x$")
 axs[0].set_xlabel("$p_1$")
-axs[0].legend(fontsize="small",loc="upper right")
+axs[0].legend(fontsize=8, loc="lower left")
 
 
 fig.suptitle("Continuation of the stable stationary point(s)")
