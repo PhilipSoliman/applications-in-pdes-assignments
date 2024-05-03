@@ -65,12 +65,6 @@ print("\nFinding limit cycle starting from bifurcation point...")
 cycle = continuation.shootingMethod(mcm, period_guess=18)
 print(cycle)
 
-# extract point on limit cycle
-cycle_point = cycle[:n,]
-h_0 = cycle[n : 2 * n]
-cycle_parameter = cycle[2 * n]
-cycle_period = cycle[2 * n + 1]
-
 
 # integrate over one period
 # mcm.x = cycle_point
@@ -119,21 +113,29 @@ solutions = []
 parameters = []
 periods = []
 cycles = []
+eigs = []
+stable = []
+cycle_parameter = 0
 while cycle_parameter <= 1:
     print(f"Continuing limit cycle with parameter {cycle_parameter}")
-    # set initial guess for next limit cycle
-    mcm.x = cycle_point + 0.05 * h_0
-    mcm.p1 = cycle_parameter
-
-    # find next limit cycle
-    cycle = continuation.shootingMethod(mcm, period_guess=cycle_period)
-
     # extract point on limit cycle
     cycle_point = cycle[:n,]
     h_0 = cycle[n : 2 * n]
     cycle_parameter = cycle[2 * n]
     cycle_period = cycle[2 * n + 1]
 
+    # calculate current stability
+    monodromy = continuation.monodromyMatrix(
+        mcm, cycle_point, cycle_parameter, cycle_period
+    )
+    eig = np.linalg.eigvals(monodromy)
+    print(f"eigenvalues: {eig}")
+    unityEigIndex = np.abs(eig) == 1
+    if np.all(np.abs(eig[~unityEigIndex]) < 1):
+        stable.append(True)
+    else:
+        stable.append(False)
+    eigs.append(eig.tolist())
     print(
         f"found new cycle with period {cycle_period} and parameter {cycle_parameter} at point {cycle_point}"
     )
@@ -148,6 +150,15 @@ while cycle_parameter <= 1:
     t_eval = np.linspace(*t_span, 1000)
     sol = solve_ivp(fun, t_span, cycle_point, t_eval=t_eval, vectorized=True)
     cycles.append(sol.y.tolist())
+
+    # find new limit cycle (see section 7.6.3)
+    new_cycle_point = cycle_point + 0.11 * h_0
+    new_cycle_parameter = cycle_parameter
+    new_cycle_period = cycle_period
+    mcm.x = new_cycle_point
+    mcm.p1 = new_cycle_parameter
+    cycle = continuation.shootingMethod(mcm, period_guess=cycle_period)
+    cycle_parameter = cycle[2 * n]
 
 ################## plot limit cycles ##################
 for cycle in cycles:
@@ -165,6 +176,13 @@ plt.show()
 filename = "mcm_limit_cycles.json"
 filepath = data_dir / filename
 for bif in bifurcations:
-    out = dict(points=solutions, parameter=parameters, periods=periods, cycles=cycles)
+    out = dict(
+        points=solutions,
+        parameter=parameters,
+        periods=periods,
+        cycles=cycles,
+        # eigs=eigs, # complex numbers are not serializable
+        stable=stable,
+    )
     with open(filepath, "w") as f:
         json.dump(out, f, indent=4)
