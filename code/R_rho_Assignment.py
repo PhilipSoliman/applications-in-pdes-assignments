@@ -185,7 +185,7 @@ t, y_tim = time_integrator(Fun_ext, params_ext, (0.1, 0.05, 0.03), dt, T)
 # Plot
 ########################################################################################################################
 ## Figure 1 ##
-plt.figure(1, figsize=(2, 2))
+fig = plt.figure(1, figsize=(2, 2))
 plt.subplot(2, 2, 1)
 # Plot result of continuation Rac vs B
 plt.plot(B_arr, y_s[:, 0], "-", color=colours[0])
@@ -196,8 +196,8 @@ plt.plot(
     y_tim[-1, :], y_tim[0, :], "-", color=colours[1]
 )  # trajectory y_tim[-1,:] = B(t), y_tim[0,:] = Rac(t)
 plt.plot(y_tim[-1, 0], y_tim[0, 0], "o", color=colours[1])  # mark initial condition
-plt.xlabel("B")
-plt.ylabel("Rac")
+plt.xlabel(r"$\hat{B}$")
+plt.ylabel(r"$\hat{R}$")
 plt.ylim(0, 1)
 plt.xlim(0, Bmax_bifdiag)
 
@@ -211,8 +211,8 @@ plt.plot(
     y_tim[-1, :], y_tim[1, :], "-", color=colours[1]
 )  # trajectory y_tim[-1,:] = B(t), y_tim[0,:] = rho(t)
 plt.plot(y_tim[-1, 0], y_tim[1, 0], "o", color=colours[1])  # mark initial condition
-plt.xlabel("B")
-plt.ylabel("rho")
+plt.xlabel(r"$\hat{B}$")
+plt.ylabel(r"$\hat{\rho}$")
 plt.ylim(0, 1)
 plt.xlim(0, Bmax_bifdiag)
 
@@ -225,19 +225,19 @@ plt.plot(y_u[:, 0], y_u[:, 1], "--", color=colours[0])
 plt.plot(y_tim[0, :], y_tim[1, :], "-", color=colours[1])
 plt.plot(y_tim[0, 0], y_tim[1, 0], "o", color=colours[1])
 Bplot = 1
-plt.xlabel("Rac")
-plt.ylabel("rho")
+plt.xlabel(r"$\hat{R}$")
+plt.ylabel(r"$\hat{\rho}$")
 plt.ylim(0, 1)
 plt.xlim(0, 1)
 
 plt.subplot(2, 2, 4)
 # B as function of t
 plt.plot(t, y_tim[2, :], "-", color=colours[1])
-plt.ylabel("B")
-plt.xlabel("t")
+plt.ylabel(r"$\hat{B}$")
+plt.xlabel("$t$")
 
 st.show()
 
 # save figure
 filename = f"cell_biology_R0={R0}_rho0={rho0}_deltaR={deltaR}_n={n}_Bmax={Bmax}_eps={eps}.png"
-plt.savefig(output_dir / filename)
+fig.savefig(output_dir / filename)
