@@ -234,10 +234,12 @@ plt.subplot(2, 2, 4)
 # B as function of t
 plt.plot(t, y_tim[2, :], "-", color=colours[1])
 plt.ylabel(r"$\hat{B}$")
-plt.xlabel("$t$")
+plt.xlabel(r"$\hat{t}$")
 
 st.show()
 
 # save figure
-filename = f"cell_biology_R0={R0}_rho0={rho0}_deltaR={deltaR}_n={n}_Bmax={Bmax}_eps={eps}.png"
+filename = (
+    f"cell_biology_R0={R0}_rho0={rho0}_deltaR={deltaR}_n={n}_Bmax={Bmax}_eps={eps}.png"
+)
 fig.savefig(output_dir / filename)
