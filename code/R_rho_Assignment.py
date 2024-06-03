@@ -103,6 +103,7 @@ B_arr = []  # solution y
 y_arr = []  # parameter B
 evs = []  # largest eigenvalues
 all_evs = []  # list of all eigenvalues
+bifurcations = []  # list of bifurcation points
 
 ########################################################################################################################
 ## Find equilibria for variable B=B0
@@ -143,13 +144,20 @@ while B < Bmax_bifdiag and iter < 3000:
     # compute eigenvalues for assessing stability
     J_ev = Jac(y, B, params)
     ev = np.linalg.eigvals(J_ev)
+    real_ev = np.real(ev)
     evs.append(np.max(np.real(ev)))  # save maximum real value of evs
+    if iter >= 2 and np.sign(evs[-1]) != np.sign([evs[-2]]):
+        bifurcations.append((y,B))
     all_evs.append((np.real(ev)))
 
     # update the output arrays
     B_arr.append(B)
     y_arr.append(y)
     iter += 1
+
+# print nicely formatted biurcation points
+for bif in bifurcations:
+    print(f"Bifurcation at B={bif[1]:.3f}, Rac={bif[0][0]:.3f}, rho={bif[0][1]:.3f}")
 
 # convert lists to arrays
 B_arr = np.asarray(B_arr)  # array of values of B
@@ -184,14 +192,14 @@ t, y_tim = time_integrator(Fun_ext, params_ext, (0.1, 0.05, 0.03), dt, T)
 ########################################################################################################################
 # Plot
 ########################################################################################################################
-## Figure 1 ##
 fig = plt.figure(1, figsize=(2, 2))
 plt.subplot(2, 2, 1)
+
 # Plot result of continuation Rac vs B
 plt.plot(B_arr, y_s[:, 0], "-", color=colours[0])
 plt.plot(B_arr, y_u[:, 0], "--", color=colours[0])
 
-# Plot trajectory in same plot
+## Plot trajectory in same plot
 plt.plot(
     y_tim[-1, :], y_tim[0, :], "-", color=colours[1]
 )  # trajectory y_tim[-1,:] = B(t), y_tim[0,:] = Rac(t)
@@ -201,12 +209,16 @@ plt.ylabel(r"$\hat{R}$")
 plt.ylim(0, 1)
 plt.xlim(0, Bmax_bifdiag)
 
+## plot bifurcation points
+for bif in bifurcations:
+    plt.plot(bif[1], bif[0][0], "o", color=colours[2])
+
 plt.subplot(2, 2, 2)
 # Plot result of continuation rho vs B
 plt.plot(B_arr, y_s[:, 1], "-", color=colours[0])
 plt.plot(B_arr, y_u[:, 1], "--", color=colours[0])
 
-# Plot trajectory in same plot
+## Plot trajectory in same plot
 plt.plot(
     y_tim[-1, :], y_tim[1, :], "-", color=colours[1]
 )  # trajectory y_tim[-1,:] = B(t), y_tim[0,:] = rho(t)
@@ -216,12 +228,16 @@ plt.ylabel(r"$\hat{\rho}$")
 plt.ylim(0, 1)
 plt.xlim(0, Bmax_bifdiag)
 
+## plot bifurcation points
+for bif in bifurcations:
+    plt.plot(bif[1], bif[0][1], "o", color=colours[2])
+
 plt.subplot(2, 2, 3)
-# Plot result of continuation Rac vs rho
+## Plot result of continuation Rac vs rho
 plt.plot(y_s[:, 0], y_s[:, 1], "-", color=colours[0])
 plt.plot(y_u[:, 0], y_u[:, 1], "--", color=colours[0])
 
-# Plot trajectory in same plot
+## Plot trajectory in same plot
 plt.plot(y_tim[0, :], y_tim[1, :], "-", color=colours[1])
 plt.plot(y_tim[0, 0], y_tim[1, 0], "o", color=colours[1])
 Bplot = 1
@@ -229,6 +245,10 @@ plt.xlabel(r"$\hat{R}$")
 plt.ylabel(r"$\hat{\rho}$")
 plt.ylim(0, 1)
 plt.xlim(0, 1)
+
+## plot bifurcation points
+for bif in bifurcations:
+    plt.plot(bif[0][0], bif[0][1], "o", color=colours[2])
 
 plt.subplot(2, 2, 4)
 # B as function of t
