@@ -89,7 +89,7 @@ ds = 0.001
 B0 = 0.001
 Bmax_bifdiag = 0.1  # maximum value of B for continuation; terminate for larger B
 
-eps = 0.0  # rate of change of B, used in exercise 3, 4
+eps = 20  # rate of change of B, used in exercise 3, 4
 Bmax = 0.04  # value Bmax, only used in exercise 4
 
 dt = 0.01

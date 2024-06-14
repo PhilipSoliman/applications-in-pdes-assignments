@@ -22,6 +22,7 @@ pyutils.add_modules_to_path()
 pyutils.set_style()
 root = pyutils.get_root()
 output_dir = root / "report" / "figures"
+data_dir = root / "code" / "data"
 
 """
 ########################################################################################################################
@@ -114,7 +115,7 @@ norms = []
 for i, y0 in enumerate(initial_guesses):
     B = B0
     y = Newton_small(Fun, Jac, y0, B0, params)
-    roots.append(y)
+    roots.append(np.array(y))
     norm = np.linalg.norm(y)
     norms.append(norm)
 
@@ -130,3 +131,28 @@ for i, y in enumerate(roots):
     else:
         print(r".")    
 print(r"\end{align*}")
+np.save(data_dir / "cb_equilibria.npy", roots)
+
+
+#########################################################################################################################
+## Domains of attraction
+#########################################################################################################################
+gridsize = 400
+tolerance = 1e-6
+Rs = np.linspace(0, 1, gridsize)
+rhos = np.linspace(0, 1, gridsize)
+attractors = np.zeros((gridsize, gridsize))
+for i, R in enumerate(Rs):
+    for j, rho in enumerate(rhos):
+        y0 = [R, rho]
+        y = Newton_small(Fun, Jac, y0, B0, params)
+        print(y)
+        distance_from_roots = np.linalg.norm(np.array(y) - roots, axis=1)
+        closest_root = np.argmin(distance_from_roots)
+        if distance_from_roots[closest_root] < tolerance:
+            attractors[i, j] = closest_root + 1
+        else:
+            attractors[i, j] = 0
+
+np.save(data_dir / "cb_domains_of_attraction.npy", attractors)
+print(attractors)
