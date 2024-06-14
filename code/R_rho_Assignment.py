@@ -261,6 +261,6 @@ st.show()
 
 # save figure
 filename = (
-    f"cell_biology_R(0)={ic[0]}_rho(0)={ic[1]}_B(0)_{ic[2]}_eps={eps}_Bmax={Bmax}.png"
+    f"cb_R(0)={ic[0]}_rho(0)={ic[1]}_B(0)_{ic[2]}_eps={eps}_Bmax={Bmax}.png"
 )
 fig.savefig(output_dir / filename)
