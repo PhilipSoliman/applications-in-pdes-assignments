@@ -86,14 +86,14 @@ rho0 = 0.16
 deltaR = 1
 n = 4
 ds = 0.001
-B0 = 0.001
+B0 = 0.0001
 Bmax_bifdiag = 0.1  # maximum value of B for continuation; terminate for larger B
 
-eps = 20  # rate of change of B, used in exercise 3, 4
+eps = 0.001   # rate of change of B, used in exercise 3, 4
 Bmax = 0.04  # value Bmax, only used in exercise 4
 
 dt = 0.01
-T = 20
+T = 100
 
 
 # initialise arrays for output
@@ -187,7 +187,8 @@ params_ext = (A, R0, rho0, deltaR, n, Bmax, eps)
 
 # the time integrator has arguments: function, parameter list (see above), tuple of initial conditions (R, rho, B), time step, end time.
 # y_tim has shape (3, length(t)). In the first dimension it has entries Rac, rho, B
-t, y_tim = time_integrator(Fun_ext, params_ext, (0.1, 0.05, 0.03), dt, T)
+ic = (0.1, 0.5, B0)
+t, y_tim = time_integrator(Fun_ext, params_ext, ic, dt, T)
 
 ########################################################################################################################
 # Plot
@@ -260,6 +261,6 @@ st.show()
 
 # save figure
 filename = (
-    f"cell_biology_R0={R0}_rho0={rho0}_deltaR={deltaR}_n={n}_Bmax={Bmax}_eps={eps}.png"
+    f"cell_biology_R(0)={ic[0]}_rho(0)={ic[1]}_B(0)_{ic[2]}_eps={eps}_Bmax={Bmax}.png"
 )
 fig.savefig(output_dir / filename)
