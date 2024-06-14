@@ -86,7 +86,7 @@ rho0 = 0.16
 deltaR = 1
 n = 4
 ds = 0.001
-B0 = 0.0001
+B0 = 0.001
 Bmax_bifdiag = 0.1  # maximum value of B for continuation; terminate for larger B
 
 eps = 0.001   # rate of change of B, used in exercise 3, 4

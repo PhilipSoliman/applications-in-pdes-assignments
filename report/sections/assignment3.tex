@@ -38,7 +38,7 @@ In figure \ref{fig:cell_biology_domains_of_attraction} the domains of attraction
 \end{figure}
 
 \subsection{Non-autonomous system}
-We now introduce a `small' linear time-dependent perturbation to $\hat{B}$, that is the perturbed system is now given by
+We now introduce a `small' linear time-dependent perturbation to $\hat{B}$. That is, the perturbed system is now given by
 \begin{align*}
     \hat{R}'_a &= \frac{\hat{A} \left(1 - \hat{R}_{a}\right)}{\hat{\rho}_a^{n} + \rho_{0}^{n}}  - \hat{\delta}_{R} \hat{R}_{a}\\
     \hat{\rho}'_a &= \frac{\hat{B} \left(1 - \hat{\rho}_a\right)}{\hat{R}_0^{n} + \hat{R}_{a}^{n}} - \hat{\rho}_a\\
@@ -46,7 +46,7 @@ We now introduce a `small' linear time-dependent perturbation to $\hat{B}$, that
 \end{align*}
 where $\epsilon$ is small or big with respect to the system dynamics (reciprocal of the linearized system's eigenvalues). 
 
-Figures \ref{fig:cell_biology_ex3_small} and \ref{fig:cell_biology_ex3_big} show the continuation of the system with $\epsilon = 0.01$ and $\epsilon = 0.1$ respectively.
+Figures \ref{fig:cell_biology_ex3_small} and \ref{fig:cell_biology_ex3_big} show the continuation of the system with $\epsilon = 0.001$ and $\epsilon = 0.01$ respectively.
 \begin{figure}[H]
     \centering
     \includegraphics[width= \textwidth]{figures/cell_biology_R(0)=0.1_rho(0)=0.5_B(0)_0.0001_eps=0.001_Bmax=0.04.png}
@@ -59,6 +59,21 @@ Figures \ref{fig:cell_biology_ex3_small} and \ref{fig:cell_biology_ex3_big} show
     \includegraphics[width= \textwidth]{figures/cell_biology_R(0)=0.1_rho(0)=0.5_B(0)_0.0001_eps=0.01_Bmax=0.04.png}
     \caption{}
     \label{fig:cell_biology_ex3_big}
+\end{figure}
+
+Next, we look for critical slowing down near the bifurcations of the system. The results for $\epsilon = 0.001$ and $\epsilon = 0.01$ are shown in figures \ref{fig:cell_biology_critical_slowing_down_small} and \ref{fig:cell_biology_critical_slowing_down_big} respectively.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width= \textwidth]{figures/cell_biology_critslow_R(0)=0.0_rho(0)=0.0_B(0)_0.001_eps=0.001_Bmax=0.04.png}
+    \caption{}
+    \label{fig:cell_biology_critical_slowing_down_small}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width= \textwidth]{figures/cell_biology_critslow_R(0)=0.0_rho(0)=0.0_B(0)_0.001_eps=0.01_Bmax=0.04.png}
+    \caption{}
+    \label{fig:cell_biology_critical_slowing_down_big}
 \end{figure}
 
 \subsection{Conclusion}
