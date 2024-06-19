@@ -137,16 +137,33 @@ np.save(data_dir / "cb_equilibria.npy", roots)
 #########################################################################################################################
 ## Domains of attraction
 #########################################################################################################################
-gridsize = 400
+from tqdm import tqdm
+from contextlib import contextmanager,redirect_stderr,redirect_stdout
+from os import devnull
+
+@contextmanager
+def suppress_stdout_stderr():
+    """A context manager that redirects stdout and stderr to devnull"""
+    with open(devnull, 'w') as fnull:
+        with redirect_stderr(fnull) as err, redirect_stdout(fnull) as out:
+            yield (err, out)
+
+gridsize = 1000
 tolerance = 1e-6
 Rs = np.linspace(0, 1, gridsize)
 rhos = np.linspace(0, 1, gridsize)
 attractors = np.zeros((gridsize, gridsize))
+pbar = tqdm(Rs, desc="Calculating domains of attraction", total=gridsize, unit=f"image rows")
+
 for i, R in enumerate(Rs):
+    # pbar.set_description(
+    #     f" {i}"
+    #         )
+    pbar.update(1)
     for j, rho in enumerate(rhos):
         y0 = [R, rho]
-        y = Newton_small(Fun, Jac, y0, B0, params)
-        print(y)
+        with suppress_stdout_stderr():
+            y = Newton_small(Fun, Jac, y0, B0, params)
         distance_from_roots = np.linalg.norm(np.array(y) - roots, axis=1)
         closest_root = np.argmin(distance_from_roots)
         if distance_from_roots[closest_root] < tolerance:
