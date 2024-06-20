@@ -62,7 +62,7 @@ mcm.p1 = p1
 fig = plt.figure()
 ax = fig.add_subplot(111, projection="3d")
 print("\nFinding limit cycle starting from bifurcation point...")
-cycle = continuation.shootingMethod(mcm, period_guess=18)
+cycle, cycle_valid = continuation.shootingMethod(mcm, period_guess=17.6)
 print(cycle)
 
 solutions = []
@@ -73,6 +73,8 @@ eigs = []
 stable = []
 cycle_parameter = 0
 while cycle_parameter <= 1:
+    if cycle_valid == 0:
+        continue
     print(f"Continuing limit cycle with parameter {cycle_parameter}")
     # extract point on limit cycle
     cycle_point = cycle[:n,]
@@ -108,12 +110,16 @@ while cycle_parameter <= 1:
     cycles.append(sol.y.tolist())
 
     # find new limit cycle (see section 7.6.3)
-    new_cycle_point = cycle_point + 0.11 * h_0
+    new_cycle_point = cycle_point + 0.11 * h_0 
+    # NEW IDEA: solve equation 7.6 to trace branch and find new limit cycle
+    # only do above update if at a hopf bifurcation!
+    # I may have been using th worng update!
     new_cycle_parameter = cycle_parameter
     new_cycle_period = cycle_period
     mcm.x = new_cycle_point
     mcm.p1 = new_cycle_parameter
-    cycle = continuation.shootingMethod(mcm, period_guess=cycle_period)
+    
+    cycle, cycle_valid = continuation.shootingMethod(mcm, period_guess=cycle_period)
     cycle_parameter = cycle[2 * n]
 
 ################## plot limit cycles ##################

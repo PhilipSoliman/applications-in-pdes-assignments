@@ -140,6 +140,7 @@ class Continuation:
         parameterValues = []
         stableBranch = []
         bifurcationPoints = []
+        eigvals_around_bif = [] # contains eigs just before and after bifurcation
         self.stableBranch = self.checkStability(nls)
         while True:
             solution = nls.get_current_solution()
@@ -196,6 +197,7 @@ class Continuation:
                     bifurcationPoint = self.findBifurcationDirect(nls)
                 if bifurcationPoint:
                     self.print("Bifurcation point found.")
+                    eigvals_around_bif.append((self.previousEigvals, self.eigvals))
                     bifurcationPoints.append(bifurcationPoint)
                 else:
                     self.print("Bifurcation point not found.")
@@ -212,6 +214,7 @@ class Continuation:
             parameter=np.array(parameterValues),
             stable=np.array(stableBranch),
             bifurcations=bifurcationPoints,
+            eigvals_around_bif=eigvals_around_bif
         )
         return solutions
 
@@ -790,7 +793,7 @@ class Continuation:
             self.print(bcolors.OKGREEN + msg + bcolors.ENDC)
         else:
             self.print(bcolors.WARNING + msg + bcolors.ENDC)
-        return out
+        return out, ier
 
     def shootingMethodRHS(self, t: float, y: np.ndarray):
         """

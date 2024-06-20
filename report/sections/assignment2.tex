@@ -50,7 +50,7 @@ points in the parameter $ p_1 \in [0.5, 1] $ and plot the continuation in Figure
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/mcm_continuation.png}
-    \caption{Continuation of the stable stationary points in the parameter $p_1$,
+    \caption{Continuation using the arc-length method of the stable stationary points in the parameter $p_1$,
     point 5 (left) and point 8 (right). The former encounters a bifurcation at $p_1 \approx 0.71$. From this 
     Hopf-bifurcation an unstable stationary solution and a limit cycle emerges.}
     \label{fig:mcm_continuation}
@@ -69,9 +69,10 @@ Seydel's book (section 5.3.1). The particular test function used was the maximum
 the system Jacobian.
 
 The bifurcation is a Hopf-bifurcation, as a complex pair of eigenvalues crosses the imaginary axis with non-zero velocity
-That is to say, the eigenvalues of the system jacobian at the continuation step dircetly after the bifurcation are
+That is to say, the eigenvalues of the system jacobian at the continuation step directly before and after the bifurcation are
 \begin{align*}
-    0.007 \pm 0.355i, -0.54,
+    &\textbf{before: } &-1.4\times10^{-4} \pm 0.36i, -0.53,\\
+    &\textbf{after: }  &1.38\times10^{-4} \pm 0.36i, -0.53	
 \end{align*}
 which shows the eigenvalues pases through the imaginary axis with non-zero velocity.
 
@@ -95,19 +96,27 @@ section 7.6.2 of Seydel's book. In other words we solve the following BVP
         h_1(0)-1
         \end{array}\right)=\mathbf{0},
 \end{align*}
-using the shooting method in order to switch from the stationary solution to the limit cycle. 
-The solution we obtain is
+using the shooting method in order to switch from the stationary solution to the limit cycle. In particular, we initialize the system 
+to a point either on or close to the Hopf-bifurcation, because this point is close to the limit cycle. We then provide an initial guess for the 
+period of the limit cycle, and solve the BVP using the shooting method. To do so, we make use of Scipy's \lstinline|integrate.solve_ivp| and \lstinline|optimize.fsolve| functions.
+In short, the former allows us to integrate the system of ODEs, while the latter allows us to solve the BVP. 
+
+Going into more detail, we use \lstinline|integrate.solve_ivp| to integrate the system of ODEs over some period $T$ and then use the final values of the integration to calculate the residuals of the boundary conditions.
+This defines an objective function that we want to minimize. We then use \lstinline|optimize.fsolve| to find the values of the initial conditions that make the residuals zero. \lstinline|optimize.fsolve| will 
+effectively find the initial conditions that make the solution of the BVP a limit cycle.
+
+The solution we obtain upon completing above process is
 \begin{align*}
     \mathbf{x}^{(0)} & = (0.13, 0.67, 0.15)\\
     T^{(0)} &= 17.6\\
     p_1^{(0)} & = 0.72 \\
     \mathbf{h}^{(0)} &= (1.00, -1.40 , 0.00),
 \end{align*}
-from which we get an estimate for the period of the limit cycle.
+from which we get a more accurate estimate for the period of the limit cycle.
 
 \subsection{Continuation of limit cycle}
 We use the solution of the BVP from the previous section as an initial guess for the continuation of the limit cycle.
-Following the method outlined in section 7.6.3 of Seydel's book, we repeatedly solve the BVP, wherein each 
+Following the method outlined in section 7.6.3 of Seydel's book, we repeatedly solve the BVP in the same way we did before, wherein each 
 iteration starts with the solution of the previous iteration plus a small perturbation given 
 by $\mathbf{h}$ (Equation 7.24, Seydel)
 \[

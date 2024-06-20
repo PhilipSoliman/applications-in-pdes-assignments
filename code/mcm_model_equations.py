@@ -115,14 +115,19 @@ for i, stable_point in enumerate(stable_points):
     p1s = solutions["parameter"]
     stable = solutions["stable"]
     bifs = solutions["bifurcations"]
+    eigvals_around_bif = solutions["eigvals_around_bif"]
 
     # add new bifurcations to list
     bifurcations += bifs
 
     # plot bifurcations
-    for bif in bifs:
+    for i, bif in enumerate(bifs):
         mean = np.mean(bif["solution"])
-        ax.plot(bif["parameter"], mean, "ko", label="bifurcation")
+        ax.plot(bif["parameter"], mean, "ko", label="bifurcation (Hopf)")
+            # print eigs directly before and after bifurcation
+        print("\nEigenvalues around bifurcation:")
+        print("\t before: ", eigvals_around_bif[i][0])
+        print("\t after: ", eigvals_around_bif[i][1])
 
     # stable branches
     # ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
