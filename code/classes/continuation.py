@@ -140,7 +140,7 @@ class Continuation:
         parameterValues = []
         stableBranch = []
         bifurcationPoints = []
-        eigvals_around_bif = [] # contains eigs just before and after bifurcation
+        eigvals_around_bif = []  # contains eigs just before and after bifurcation
         self.stableBranch = self.checkStability(nls)
         while True:
             solution = nls.get_current_solution()
@@ -214,7 +214,7 @@ class Continuation:
             parameter=np.array(parameterValues),
             stable=np.array(stableBranch),
             bifurcations=bifurcationPoints,
-            eigvals_around_bif=eigvals_around_bif
+            eigvals_around_bif=eigvals_around_bif,
         )
         return solutions
 
@@ -754,35 +754,60 @@ class Continuation:
             print(msg, **kwargs)
 
     def shootingMethod(
-        self, nls: NonLinearSystem, period_guess: float, tolerance=1e-10, maxiter=200
+        self,
+        nls: NonLinearSystem,
+        type: str,  # specify if continuation or switching
+        period_guess: float = None,
+        tolerance=1e-12,
+        maxiter=200,
+        stepsize=None,
     ):
         """
         shooting method for finding limit cycles
         """
+        # get current solution and parameter
         self.nls = nls
         solution = self.nls.get_current_solution()
         parameter = getattr(self.nls, self.parameterName)
+        self.oldParameter = parameter
         self.n = len(solution)
+
+        # objective function for the shooting method
+        if type == "cont":
+            objective = self.shootingMethodObjectiveCont
+            y_0 = np.zeros(self.n + 2)
+            y_0[: self.n] = solution
+            y_0[self.n] = parameter
+            y_0[self.n + 1] = period_guess
+            if stepsize is None:
+                raise ValueError("Stepsize required for periodic branch cont.")
+            self.pcont_stepsize = stepsize
+        elif type == "switch":
+            objective = self.shootingMethodObjectiveSwitch
+            y_0 = np.zeros(2 * self.n + 2)
+            y_0[: self.n] = solution
+            y_0[self.n : self.n * 2] = 0
+            y_0[self.n] = 1
+            y_0[2 * self.n] = parameter  # t=0
+            y_0[2 * self.n + 1] = (
+                period_guess  # 2 * np.pi / self.imaginaryPartHopfEig  # at t=0
+            )
+        elif type == "pdouble":
+            raise NotImplementedError
+            objective = self.shootingMethodObjectivePDouble
+            size = 2 * self.n + 2
+        else:
+            raise ValueError("Type not recognized. Choose 'cont' or 'switch'.")
+
+        # check if period guess is provided
+        if period_guess is None:
+            raise ValueError("Period guess required for switching continuation.")
+
+        # define time span
         self.t_span = (0, 1)
-        y_0 = np.zeros(2 * self.n + 2)
 
-        # initial guess solution at t=0
-        y_0[: self.n] = solution
-        # y_0[: self.n,1] = solution
-
-        # initial guess for h1 at t=0
-        y_0[self.n : self.n * 2] = 1
-
-        # values for parameter
-        y_0[2 * self.n] = parameter  # t=0
-        # y_0[2 * self.n, 1] = parameter  # t=1
-
-        # period guess
-        y_0[2 * self.n + 1] = (
-            period_guess  # 2 * np.pi / self.imaginaryPartHopfEig  # at t=0
-        )
         out, infodict, ier, msg = fsolve(
-            self.shootingMethodObjective,
+            objective,
             y_0,
             xtol=tolerance,
             maxfev=maxiter,
@@ -795,7 +820,7 @@ class Continuation:
             self.print(bcolors.WARNING + msg + bcolors.ENDC)
         return out, ier
 
-    def shootingMethodRHS(self, t: float, y: np.ndarray):
+    def shootingMethodRHSSwitch(self, t: float, y: np.ndarray):
         """
         RHS of the shooting method
         """
@@ -808,10 +833,11 @@ class Continuation:
         f = self.nls.evaluate()
         df = self.nls.evaluate_derivative()
         return np.concatenate(
-            (period * f, period * np.einsum("ij, j -> i", df, h), [0, 0])
+            # (period * f, period * np.einsum("ij, j -> i", df, h), [0, 0])
+            (period * f, period * df @ h, [0, 0])
         )
 
-    def shootingMethodObjective(self, y0):
+    def shootingMethodObjectiveSwitch(self, y0):
         """
         Objective function for the shooting method
         """
@@ -825,7 +851,13 @@ class Continuation:
         df = self.nls.evaluate_derivative()
 
         # integrate
-        sol = solve_ivp(self.shootingMethodRHS, self.t_span, y0, vectorized=False)
+        sol = solve_ivp(
+            self.shootingMethodRHSSwitch,
+            self.t_span,
+            y0,
+            vectorized=False,
+            max_step=0.01,
+        )
 
         # check residuals
         y1 = sol.y
@@ -835,11 +867,61 @@ class Continuation:
         period1 = y1[2 * self.n + 1, -1]
 
         return np.concatenate(
-            (h0 - h1, solution0 - solution1, [h0[0] - 1], [np.sum(h0 * df[0])])
+            (solution0 - solution1, h0 - h1, [np.sum(h0 * df[0]), h0[0] - 1])
+            # (h0 - h1, solution0 - solution1, [np.sum(h0 * df[0]), parameter0 - self.oldParameter - 0.02])
+        )
+
+    def shootingMethodRHSCont(self, t: float, y: np.ndarray):
+        """
+        RHS of the shooting method
+        """
+        solution = y[: self.n]
+        parameter = y[self.n]
+        period = y[self.n + 1]
+        setattr(self.nls, self.parameterName, parameter)
+        self.nls.set_current_solution(solution)
+        f = self.nls.evaluate()
+        # df = self.nls.evaluate_derivative()
+        return np.concatenate((period * f, [0, 0]))
+
+    def shootingMethodObjectiveCont(self, y0):
+        """
+        Objective function for the shooting method
+        """
+        # save initial state
+        solution0 = y0[: self.n]
+        parameter0 = y0[self.n]
+        # period0 = y0[self.n + 1]
+        self.nls.set_current_solution(solution0)
+        setattr(self.nls, self.parameterName, parameter0)
+        f = self.nls.evaluate()
+        # df = self.nls.evaluate_derivative()
+
+        # integrate
+        sol = solve_ivp(
+            self.shootingMethodRHSCont, self.t_span, y0, vectorized=False, max_step=0.005
+        )
+
+        # check residuals
+        y1 = sol.y
+        solution1 = y1[: self.n, -1]
+        parameter1 = y1[self.n, -1]
+        # period1 = y1[self.n + 1, -1]
+
+        return np.concatenate(
+            # (solution0 - solution1, [f[0], parameter0-self.oldParameter-stepsize])
+            (
+                solution0 - solution1,
+                [parameter0 - self.oldParameter - self.pcont_stepsize, f[0]],
+            )
         )
 
     def monodromyMatrix(
-        self, nls, cycle_point: np.ndarray, cycle_parameter: np.ndarray, cycle_period: float
+        self,
+        nls,
+        cycle_point: np.ndarray,
+        cycle_parameter: np.ndarray,
+        cycle_period: float,
     ) -> np.ndarray:
         """
         Calculate the monodromy matrix of a limit cycle.
@@ -857,7 +939,14 @@ class Continuation:
             y_0[self.n + j] = 1
             y_0[2 * self.n] = cycle_parameter
             y_0[2 * self.n + 1] = cycle_period
-            sol = solve_ivp(self.shootingMethodRHS, self.t_span, y_0, t_eval=t_eval, vectorized=False)
+            sol = solve_ivp(
+                self.shootingMethodRHSSwitch,
+                self.t_span,
+                y_0,
+                t_eval=t_eval,
+                vectorized=False,
+                max_step=0.001,
+            )
             h = sol.y[self.n : 2 * self.n, -1]
             monodromy[:, j] = h
         return monodromy

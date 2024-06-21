@@ -124,7 +124,7 @@ for i, stable_point in enumerate(stable_points):
     for i, bif in enumerate(bifs):
         mean = np.mean(bif["solution"])
         ax.plot(bif["parameter"], mean, "ko", label="bifurcation (Hopf)")
-            # print eigs directly before and after bifurcation
+        # print eigs directly before and after bifurcation
         print("\nEigenvalues around bifurcation:")
         print("\t before: ", eigvals_around_bif[i][0])
         print("\t after: ", eigvals_around_bif[i][1])
@@ -176,9 +176,19 @@ with open(filepath, "r") as f:
 stable = np.array(stable).astype(bool)
 parameters = np.array(parameters)
 solutions = np.array(solutions)
-axs[0].plot(parameters[stable], np.mean(solutions[stable], 1), "gx", label="stable limit cycle")
 axs[0].plot(
-    parameters[~stable], np.mean(solutions[~stable], 1), "rx", label="unstable limit cycle"
+    parameters[stable],
+    np.mean(solutions[stable], 1),
+    "g-",
+    label="stable limit cycle",
+    linewidth=3,
+)
+axs[0].plot(
+    parameters[~stable],
+    np.mean(solutions[~stable], 1),
+    "r--",
+    label="unstable limit cycle",
+    linewidth=3,
 )
 axs[0].set_ylabel("$x$")
 axs[0].set_xlabel("$p_1$")
