@@ -138,7 +138,7 @@ for i, stable_point in enumerate(stable_points):
 
     # stable branches
     # ax.plot(p1s[stable], maxima[stable], "r-", label="maximum")
-    ax.plot(p1s[stable], averages[stable], "g-", label="average")
+    ax.plot(p1s[stable], averages[stable], "g-", label="equilibrium")
     # ax.plot(p1s[stable], minima[stable], "b-", label="minimum")
 
     # unstable branches
