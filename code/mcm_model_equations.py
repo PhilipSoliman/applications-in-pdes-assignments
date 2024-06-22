@@ -254,7 +254,6 @@ axs[0].set_ylabel("$x$")
 axs[0].set_xlabel("$p_1$")
 axs[0].legend(fontsize=8, loc="lower left")
 
-plt.show()
 
 fig.suptitle("Continuation of the stable stationary point(s)")
 fig.tight_layout()
