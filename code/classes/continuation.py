@@ -959,7 +959,7 @@ class Continuation:
             self.t_span,
             y0,
             vectorized=False,
-            max_step=0.01,
+            max_step=0.001,
         )
 
         # check residuals

@@ -151,7 +151,7 @@ eigs = dict(
 stable = [pdouble_stability[1], stability[1]]
 
 it = 0
-delta = 0.001
+delta = 0.01
 
 print("Cycle plot parameters: ")
 num_cycles = 10
@@ -166,8 +166,8 @@ input("Press enter to continue cycles and generate cycle plot...")
 while cycle_parameter <= 1 and it < num_iterations:
 
     it += 1
-    if not cycle_valid:
-        continue
+    # if not cycle_valid:
+    #     continue
 
     stability = continuation.calculateLimitCycleStability(
         mcm, cycle_point, cycle_parameter, cycle_period, tolerance=stable_tolerance

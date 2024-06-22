@@ -169,7 +169,7 @@ for bif in bifurcations:
 
 ############### retrieve limit cycles and add to continuation plot ##################
 # load limit cycles from file
-filename = "mcm_limit_cycles.json"
+filename = "mcm_second_pdouble_backup.json"
 filepath = data_dir / filename
 with open(filepath, "r") as f:
     data = json.load(f)
@@ -194,7 +194,7 @@ for i in range(num_doublings):
             label="stable limit cycle",
             linewidth=3,
         )
-    else:
+    if i == 1:
         axs[0].plot(
             parameters[stable],
             np.mean(solutions[stable], 1),
@@ -211,7 +211,7 @@ for i in range(num_doublings):
             label="unstable limit cycle",
             linewidth=3,
         )
-    else:
+    if i == 1:
         axs[0].plot(
             parameters[~stable],
             np.mean(solutions[~stable], 1),
@@ -232,10 +232,29 @@ for i in range(num_doublings):
             ha="center",
         )
 
+    if i == 2: # plot possible third period doubling point
+        axs[0].plot(
+            parameters[:2],
+            np.mean(solutions[:2], 1),
+            "r--",
+            linewidth=3,
+        )
+        cycle_point = solutions[1]
+        cycle_parameter = parameters[1]
+        axs[0].plot(cycle_parameter, np.mean(cycle_point), "ko")
+        axs[0].annotate(
+            f"PD{i+1}",
+            (cycle_parameter, np.mean(cycle_point)),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+        )
+
 axs[0].set_ylabel("$x$")
 axs[0].set_xlabel("$p_1$")
 axs[0].legend(fontsize=8, loc="lower left")
 
+plt.show()
 
 fig.suptitle("Continuation of the stable stationary point(s)")
 fig.tight_layout()

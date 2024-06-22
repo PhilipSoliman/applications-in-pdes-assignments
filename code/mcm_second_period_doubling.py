@@ -61,8 +61,12 @@ with open(data_dir / "mcm_limit_cycles.json", "r") as f:
         limit_cycles["periods"] = [limit_cycles["periods"][0:period_doubling_idx]]
         limit_cycles["cycles"] = [limit_cycles["cycles"][0:period_doubling_idx]]
         limit_cycles["stable"] = [limit_cycles["stable"][0:period_doubling_idx]]
-        limit_cycles["eigs"]["real"] = [limit_cycles["eigs"]["real"][0:period_doubling_idx]]
-        limit_cycles["eigs"]["imag"] = [limit_cycles["eigs"]["imag"][0:period_doubling_idx]]
+        limit_cycles["eigs"]["real"] = [
+            limit_cycles["eigs"]["real"][0:period_doubling_idx]
+        ]
+        limit_cycles["eigs"]["imag"] = [
+            limit_cycles["eigs"]["imag"][0:period_doubling_idx]
+        ]
 
 
 ######## find first period doubling bifurcation point #####
@@ -75,6 +79,7 @@ def findPdoublingPoint(limit_cycles):
         limit_cycles["eigs"]["imag"][-1]
     )
     bifurcation_index = np.where(np.isclose(eigs + 1, 0, atol=1e-1))
+    print(f"bifurcation_index: {bifurcation_index}")
     # eigs are decreasing to -1 so flip to get increasing order
     xp = np.flip(np.real(eigs)[bifurcation_index])
     points = np.array(limit_cycles["points"][-1])[bifurcation_index[0]]
@@ -86,7 +91,7 @@ def findPdoublingPoint(limit_cycles):
     pdouble_parameter = np.interp(-1, xp, np.flip(parameters))
     pdouble_period = np.interp(-1, xp, np.flip(periods))
 
-    return pdouble_point, pdouble_parameter, pdouble_period
+    return points[0], parameters[0], periods[0]
 
 
 pdouble_point, pdouble_parameter, pdouble_period = findPdoublingPoint(limit_cycles)
@@ -110,14 +115,14 @@ print(
 ############# finding limit cycles from period doubling point ############
 print(
     "\nFinding limit cycle starting from period doubling point. Using initial conds.:"
-    + f"\n\t2T: {2*pdouble_period:.2f}"
+    + f"\n\t2T: {4*pdouble_period:.2f}"
     + f"\n\tp1: {pdouble_parameter:.2f}"
     + f"\n\tx: ({pdouble_point[0]:.2f}, {pdouble_point[1]:.2f}, {pdouble_point[2]:.2f})"
 )
 mcm.x = pdouble_point
 MCM.p1 = pdouble_parameter
 cycle, cycle_valid = continuation.shootingMethod(
-    mcm, "pdouble-switch", period_guess=2 * pdouble_period, stepsize=0.0
+    mcm, "pdouble-switch", period_guess=4*pdouble_period, stepsize=0.0, tolerance=1e-12
 )
 cycle_point = cycle[:n]
 h = cycle[n : 2 * n]
@@ -246,13 +251,13 @@ ax.set_zlabel("$x_3$")
 plt.show()
 
 # save figure
-filename = "mcm_first_pdouble"
+filename = "mcm_second_pdouble"
 filepath = output_dir / f"{filename}.png"
 fig.savefig(filepath, bbox_inches="tight", dpi=500)
 
 
 ################## save limit cycles to file ##################
-filename = "mcm_limit_cycles.json"
+filename = "mcm_second_pdouble.json"
 filepath = data_dir / filename
 
 limit_cycles["points"].append(solutions)
