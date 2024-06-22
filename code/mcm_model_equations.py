@@ -123,7 +123,14 @@ for i, stable_point in enumerate(stable_points):
     # plot bifurcations
     for i, bif in enumerate(bifs):
         mean = np.mean(bif["solution"])
-        ax.plot(bif["parameter"], mean, "ko", label="bifurcation (Hopf)")
+        ax.plot(bif["parameter"], mean, "ko", label="bifurcation")
+        axs[0].annotate(
+            f"H{i}",
+            (bif["parameter"], mean),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+        )
         # print eigs directly before and after bifurcation
         print("\nEigenvalues around bifurcation:")
         print("\t before: ", eigvals_around_bif[i][0])
@@ -166,30 +173,65 @@ filename = "mcm_limit_cycles.json"
 filepath = data_dir / filename
 with open(filepath, "r") as f:
     data = json.load(f)
-    solutions = data["points"]
-    parameters = data["parameter"]
-    periods = data["periods"]
-    cycles = data["cycles"]
-    stable = data["stable"]
+    solutions_l = data["points"]
+    parameters_l = data["parameter"]
+    periods_l = data["periods"]
+    cycles_l = data["cycles"]
+    stable_l = data["stable"]
 
-# stable limit cycles
-stable = np.array(stable).astype(bool)
-parameters = np.array(parameters)
-solutions = np.array(solutions)
-axs[0].plot(
-    parameters[stable],
-    np.mean(solutions[stable], 1),
-    "g-",
-    label="stable limit cycle",
-    linewidth=3,
-)
-axs[0].plot(
-    parameters[~stable],
-    np.mean(solutions[~stable], 1),
-    "r--",
-    label="unstable limit cycle",
-    linewidth=3,
-)
+num_doublings = len(solutions_l)
+print(f"\nNumber period doublings: {num_doublings}")
+for i in range(num_doublings):
+    stable = np.array(stable_l[i]).astype(bool)
+    parameters = np.array(parameters_l[i])
+    solutions = np.array(solutions_l[i])
+    # stable limit cycles
+    if i == 0:
+        axs[0].plot(
+            parameters[stable],
+            np.mean(solutions[stable], 1),
+            "g-",
+            label="stable limit cycle",
+            linewidth=3,
+        )
+    else:
+        axs[0].plot(
+            parameters[stable],
+            np.mean(solutions[stable], 1),
+            "g-",
+            linewidth=3,
+        )
+
+        # unstable limit cycles
+    if i == 0:
+        axs[0].plot(
+            parameters[~stable],
+            np.mean(solutions[~stable], 1),
+            "r--",
+            label="unstable limit cycle",
+            linewidth=3,
+        )
+    else:
+        axs[0].plot(
+            parameters[~stable],
+            np.mean(solutions[~stable], 1),
+            "r--",
+            linewidth=3,
+        )
+    
+    # plot period doubling bifurcation
+    if i >= 1:
+        cycle_point = solutions[0]
+        cycle_parameter = parameters[0]
+        axs[0].plot(cycle_parameter, np.mean(cycle_point), "ko")
+        axs[0].annotate(
+            f"PD{i}",
+            (cycle_parameter, np.mean(cycle_point)),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+        )
+
 axs[0].set_ylabel("$x$")
 axs[0].set_xlabel("$p_1$")
 axs[0].legend(fontsize=8, loc="lower left")

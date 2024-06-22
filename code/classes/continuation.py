@@ -782,20 +782,22 @@ class Continuation:
             if stepsize is None:
                 raise ValueError("Stepsize required for periodic branch cont.")
             self.pcont_stepsize = stepsize
-        elif type == "switch":
-            objective = self.shootingMethodObjectiveSwitch
+        elif type == "hopf-switch":
+            objective = self.shootingMethodObjectiveHopfSwitch
             y_0 = np.zeros(2 * self.n + 2)
             y_0[: self.n] = solution
             y_0[self.n : self.n * 2] = 0
             y_0[self.n] = 1
             y_0[2 * self.n] = parameter  # t=0
-            y_0[2 * self.n + 1] = (
-                period_guess  # 2 * np.pi / self.imaginaryPartHopfEig  # at t=0
-            )
-        elif type == "pdouble":
-            raise NotImplementedError
-            objective = self.shootingMethodObjectivePDouble
-            size = 2 * self.n + 2
+            y_0[2 * self.n + 1] = period_guess
+        elif type == "pdouble-switch":
+            objective = self.shootingMethodObjectivePdoubleSwitch
+            y_0 = np.zeros(2 * self.n + 2)
+            y_0[: self.n] = solution
+            y_0[self.n : self.n * 2] = 0
+            y_0[self.n] = 1
+            y_0[2 * self.n] = parameter  # t=0
+            y_0[2 * self.n + 1] = period_guess
         else:
             raise ValueError("Type not recognized. Choose 'cont' or 'switch'.")
 
@@ -820,7 +822,7 @@ class Continuation:
             self.print(bcolors.WARNING + msg + bcolors.ENDC)
         return out, ier
 
-    def shootingMethodRHSSwitch(self, t: float, y: np.ndarray):
+    def shootingMethodRHSHopfSwitch(self, t: float, y: np.ndarray):
         """
         RHS of the shooting method
         """
@@ -837,7 +839,7 @@ class Continuation:
             (period * f, period * df @ h, [0, 0])
         )
 
-    def shootingMethodObjectiveSwitch(self, y0):
+    def shootingMethodObjectiveHopfSwitch(self, y0):
         """
         Objective function for the shooting method
         """
@@ -852,7 +854,7 @@ class Continuation:
 
         # integrate
         sol = solve_ivp(
-            self.shootingMethodRHSSwitch,
+            self.shootingMethodRHSHopfSwitch,
             self.t_span,
             y0,
             vectorized=False,
@@ -899,7 +901,11 @@ class Continuation:
 
         # integrate
         sol = solve_ivp(
-            self.shootingMethodRHSCont, self.t_span, y0, vectorized=False, max_step=0.005
+            self.shootingMethodRHSCont,
+            self.t_span,
+            y0,
+            vectorized=False,
+            max_step=0.005,
         )
 
         # check residuals
@@ -916,9 +922,60 @@ class Continuation:
             )
         )
 
+    def shootingMethodRHSPdoubleSwitch(self, t: float, y: np.ndarray):
+        """
+        RHS of the shooting method
+        """
+        solution = y[: self.n]
+        h = y[self.n : 2 * self.n]
+        parameter = y[2 * self.n]
+        period = y[2 * self.n + 1]
+        setattr(self.nls, self.parameterName, parameter)
+        self.nls.set_current_solution(solution)
+        f = self.nls.evaluate()
+        df = self.nls.evaluate_derivative()
+        return np.concatenate(
+            # (period * f, period * np.einsum("ij, j -> i", df, h), [0, 0])
+            (period * f, period * df @ h, [0, 0])
+        )
+
+    def shootingMethodObjectivePdoubleSwitch(self, y0):
+        """
+        Objective function for the shooting method
+        """
+        # save initial state
+        solution0 = y0[: self.n]
+        h0 = y0[self.n : 2 * self.n]
+        parameter0 = y0[2 * self.n]
+        # period0 = y0[2 * self.n + 1]
+        self.nls.set_current_solution(solution0)
+        setattr(self.nls, self.parameterName, parameter0)
+        f = self.nls.evaluate()
+        # df = self.nls.evaluate_derivative()
+
+        # integrate
+        sol = solve_ivp(
+            self.shootingMethodRHSPdoubleSwitch,
+            self.t_span,
+            y0,
+            vectorized=False,
+            max_step=0.01,
+        )
+
+        # check residuals
+        y1 = sol.y
+        solution1 = y1[: self.n, -1]
+        h1 = y1[self.n : 2 * self.n, -1]
+        # parameter1 = y1[2 * self.n, -1]
+        # period1 = y1[2 * self.n + 1, -1]
+
+        return np.concatenate(
+            (solution0 - solution1, h0 + h1, [f[0], h0[0] - 1])
+            # (h0 - h1, solution0 - solution1, [np.sum(h0 * df[0]), parameter0 - self.oldParameter - 0.02])
+        )
+
     def monodromyMatrix(
         self,
-        nls,
         cycle_point: np.ndarray,
         cycle_parameter: np.ndarray,
         cycle_period: float,
@@ -926,30 +983,48 @@ class Continuation:
         """
         Calculate the monodromy matrix of a limit cycle.
         """
-        self.nls = nls
-        self.n = len(cycle_point)
-        self.t_span = (0, 1)
-        t_eval = np.linspace(*self.t_span, 300)
+        n = len(cycle_point)
+        self.n = n
+        t_span = (0, 1)
+        t_eval = np.linspace(*t_span, 300)
 
         # obtain columns of monodromy matrix
-        monodromy = np.zeros((self.n, self.n))
-        for j in range(self.n):
-            y_0 = np.zeros(2 * self.n + 2)
-            y_0[: self.n] = cycle_point
-            y_0[self.n + j] = 1
-            y_0[2 * self.n] = cycle_parameter
-            y_0[2 * self.n + 1] = cycle_period
+        monodromy = np.zeros((n, n))
+        for j in range(n):
+            y_0 = np.zeros(2 * n + 2)
+            y_0[:n] = cycle_point
+            y_0[n + j] = 1
+            y_0[2 * n] = cycle_parameter
+            y_0[2 * n + 1] = cycle_period
             sol = solve_ivp(
-                self.shootingMethodRHSSwitch,
-                self.t_span,
+                self.shootingMethodRHSHopfSwitch,
+                t_span,
                 y_0,
                 t_eval=t_eval,
                 vectorized=False,
                 max_step=0.001,
             )
-            h = sol.y[self.n : 2 * self.n, -1]
+            h = sol.y[n : 2 * n, -1]
             monodromy[:, j] = h
         return monodromy
+
+    def calculateLimitCycleStability(
+        self,
+        nls: NonLinearSystem,
+        point: np.ndarray,
+        parameter: float,
+        period,
+        tolerance=1e-3,
+    ) -> tuple[np.ndarray, bool]:
+        self.nls = nls
+        monodromy = self.monodromyMatrix(point, parameter, period)
+        eig = np.linalg.eigvals(monodromy)
+        # check for approximate unity eigenvalues
+        unityEigIndex = np.isclose(np.abs(eig), 1, atol=tolerance)
+        if np.all(np.abs(eig[~unityEigIndex]) < 1):
+            return eig, True
+        else:
+            return eig, False
 
     def calculateFloquetMultipliers(self, monodromy_matrix: np.ndarray):
         """

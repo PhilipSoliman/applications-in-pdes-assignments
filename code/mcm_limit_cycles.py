@@ -1,3 +1,4 @@
+# %%
 import json
 from pprint import pprint
 
@@ -31,6 +32,7 @@ mcm = MCM()
 n = 3  # number of variables
 
 
+############## right hand side of the mcm ################
 def fun(t: float, y: np.ndarray) -> np.ndarray:  # rhs of mcm for integration
     mcm.x = y
     f = mcm.evaluate()
@@ -60,32 +62,30 @@ mcm.p1 = p1
 
 print("\nFinding limit cycle starting from bifurcation point...")
 cycle, cycle_valid = continuation.shootingMethod(
-    mcm, "switch", period_guess=17.6, stepsize=0.0
+    mcm, "hopf-switch", period_guess=17.6, stepsize=0.0
 )
 cycle_point = cycle[:n]
 h = cycle[n : 2 * n]
 cycle_parameter = cycle[2 * n]
 cycle_period = cycle[2 * n + 1]
-# cycle_point = cycle[:n]
-# cycle_parameter = cycle[n]
-# cycle_period = cycle[n + 1]
 
 solutions = []
 parameters = []
 periods = []
 cycles = []
-eigs = []
+eigs = dict(real=[[]], imag=[[]])
 stable = []
 it = 0
 delta = 0.1
 stable_tolerance = 1e-3
 print("Cycle plot parameters: ")
-num_cycles = 10 
+num_cycles = 10
 print(f"\tnum_cycles: {num_cycles}")
 stepsize = 0.005
 print(f"\tstepsize: {stepsize}")
-num_iterations = int((1 - cycle_parameter)//stepsize)
-print(f"\tnum_iterations: {num_iterations}")  
+num_iterations = int((1 - cycle_parameter) // stepsize)
+print(f"\tnum_iterations: {num_iterations}")
+
 cycle_spacing = num_iterations // num_cycles
 print(f"\tcycle_spacing: {cycle_spacing}")
 input("Press enter to generate cycle plot...")
@@ -95,26 +95,21 @@ while cycle_parameter <= 1 and it < num_iterations:
     if not cycle_valid:
         continue
 
-    # calculate current stability
-    monodromy = continuation.monodromyMatrix(
-        mcm, cycle_point, cycle_parameter, cycle_period
+    stability = continuation.calculateLimitCycleStability(
+        mcm, cycle_point, cycle_parameter, cycle_period, tolerance=stable_tolerance
     )
-    eig = np.linalg.eigvals(monodromy)
-    # check for approximate unity eigenvalues
-    unityEigIndex = np.isclose(np.abs(eig), 1, atol=stable_tolerance)
-    if np.all(np.abs(eig[~unityEigIndex]) < 1):
-        stable.append(True)
-    else:
-        stable.append(False)
-    eigs.append(eig.tolist())
+    eig = stability[0]
+    stable.append(stability[1])
     print(
-        f"found cycle:"+
-        f"\n\tT: {cycle_period:.3f}"+
-        f"\n\tp: {cycle_parameter:.3f}"+
-        f"\n\tx: ({cycle_point[0]:.2f}, {cycle_point[1]:.2f}, {cycle_point[2]:.2f})"+
-        f"\n\teigs: l1={eig[0]:.2f}, l2={eig[1]:.2f}, l3={eig[2]:.2f}"
+        f"found cycle:"
+        + f"\n\tT: {cycle_period:.3f}"
+        + f"\n\tp: {cycle_parameter:.3f}"
+        + f"\n\tx: ({cycle_point[0]:.2f}, {cycle_point[1]:.2f}, {cycle_point[2]:.2f})"
+        + f"\n\teigs: l1={eig[0]:.2f}, l2={eig[1]:.2f}, l3={eig[2]:.2f}"
         f"\n\tstable: {stable[-1]}"
     )
+    eigs["real"][-1].append(eig.real.tolist())
+    eigs["imag"][-1].append(eig.imag.tolist())
 
     # store solution
     solutions.append(cycle_point.tolist())
@@ -127,7 +122,6 @@ while cycle_parameter <= 1 and it < num_iterations:
         t_eval = np.linspace(*t_span, 500)
         sol = solve_ivp(fun, t_span, cycle_point, t_eval=t_eval, vectorized=True)
         cycles.append(sol.y.tolist())
-
 
     print(f"Continuing limit cycle with parameter {cycle_parameter}")
     mcm.x = cycle_point
@@ -150,7 +144,7 @@ ax = fig.add_subplot(111, projection="3d")
 num_cycles = len(cycles)
 cycle_parameters = np.array(parameters)[::cycle_spacing]
 parameter_range = np.max(cycle_parameters) - np.min(cycle_parameters)
-tick_locs = (cycle_parameters-np.min(cycle_parameters))/parameter_range
+tick_locs = (cycle_parameters - np.min(cycle_parameters)) / parameter_range
 colors = plt.cm.viridis(tick_locs)
 for i, cycle in enumerate(cycles):
     cm = ax.scatter(cycle[0], cycle[1], cycle[2], "o", color=colors[i])
@@ -182,16 +176,19 @@ fig.savefig(filepath, bbox_inches="tight", dpi=500)
 
 
 ################### save limit cycles to file ##################
+# %%
 filename = "mcm_limit_cycles.json"
 filepath = data_dir / filename
 for bif in bifurcations:
     out = dict(
-        points=solutions,
-        parameter=parameters,
-        periods=periods,
-        cycles=cycles,
-        # eigs=eigs, # complex numbers are not serializable
-        stable=stable,
+        points=[solutions],
+        parameter=[parameters],
+        periods=[periods],
+        cycles=[cycles],
+        eigs=eigs,  # complex numbers are not serializable
+        stable=[stable]
     )
     with open(filepath, "w") as f:
         json.dump(out, f, indent=4)
+
+# %%
