@@ -758,7 +758,7 @@ class Continuation:
         nls: NonLinearSystem,
         type: str,  # specify if continuation or switching
         period_guess: float = None,
-        tolerance=1e-12,
+        tolerance=1e-8,
         maxiter=200,
         stepsize=None,
     ):
@@ -858,7 +858,7 @@ class Continuation:
             self.t_span,
             y0,
             vectorized=False,
-            max_step=0.01,
+            max_step=0.001,
         )
 
         # check residuals
@@ -905,7 +905,7 @@ class Continuation:
             self.t_span,
             y0,
             vectorized=False,
-            max_step=0.005,
+            max_step=0.001,
         )
 
         # check residuals
@@ -970,7 +970,7 @@ class Continuation:
         # period1 = y1[2 * self.n + 1, -1]
 
         return np.concatenate(
-            (solution0 - solution1, h0 + h1, [f[0], h0[0] - 1])
+            (solution0 - solution1, h0 + h1, [f[1], h0[0] - 1])
             # (h0 - h1, solution0 - solution1, [np.sum(h0 * df[0]), parameter0 - self.oldParameter - 0.02])
         )
 

@@ -179,9 +179,9 @@ with open(filepath, "r") as f:
     cycles_l = data["cycles"]
     stable_l = data["stable"]
 
-num_doublings = len(solutions_l)
-print(f"\nNumber period doublings: {num_doublings}")
-for i in range(num_doublings):
+num_cycles = len(solutions_l)
+print(f"\nNumber of limit cycles: {num_cycles}")
+for i in range(num_cycles):
     stable = np.array(stable_l[i]).astype(bool)
     parameters = np.array(parameters_l[i])
     solutions = np.array(solutions_l[i])
@@ -194,7 +194,7 @@ for i in range(num_doublings):
             label="stable limit cycle",
             linewidth=3,
         )
-    if i == 1:
+    if i >= 1:
         axs[0].plot(
             parameters[stable],
             np.mean(solutions[stable], 1),
@@ -202,7 +202,7 @@ for i in range(num_doublings):
             linewidth=3,
         )
 
-        # unstable limit cycles
+    # unstable limit cycles
     if i == 0:
         axs[0].plot(
             parameters[~stable],
@@ -211,14 +211,14 @@ for i in range(num_doublings):
             label="unstable limit cycle",
             linewidth=3,
         )
-    if i == 1:
+    if i >= 1:
         axs[0].plot(
             parameters[~stable],
             np.mean(solutions[~stable], 1),
             "r--",
             linewidth=3,
         )
-    
+
     # plot period doubling bifurcation
     if i >= 1:
         cycle_point = solutions[0]
@@ -236,14 +236,14 @@ for i in range(num_doublings):
         axs[0].plot(
             parameters[:2],
             np.mean(solutions[:2], 1),
-            "r--",
+            "g-",
             linewidth=3,
         )
         cycle_point = solutions[1]
         cycle_parameter = parameters[1]
         axs[0].plot(cycle_parameter, np.mean(cycle_point), "ko")
         axs[0].annotate(
-            f"PD{i+1}",
+            f"PD{3}",
             (cycle_parameter, np.mean(cycle_point)),
             textcoords="offset points",
             xytext=(0, 10),
@@ -253,7 +253,6 @@ for i in range(num_doublings):
 axs[0].set_ylabel("$x$")
 axs[0].set_xlabel("$p_1$")
 axs[0].legend(fontsize=8, loc="lower left")
-
 
 fig.suptitle("Continuation of the stable stationary point(s)")
 fig.tight_layout()

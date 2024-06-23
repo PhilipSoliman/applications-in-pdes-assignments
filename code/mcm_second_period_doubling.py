@@ -91,7 +91,8 @@ def findPdoublingPoint(limit_cycles):
     pdouble_parameter = np.interp(-1, xp, np.flip(parameters))
     pdouble_period = np.interp(-1, xp, np.flip(periods))
 
-    return points[0], parameters[0], periods[0]
+    return pdouble_point, pdouble_parameter, pdouble_period
+    # return points[1], parameters[1], periods[1] # turns out first point is already the period doubling point!!
 
 
 pdouble_point, pdouble_parameter, pdouble_period = findPdoublingPoint(limit_cycles)
@@ -115,14 +116,14 @@ print(
 ############# finding limit cycles from period doubling point ############
 print(
     "\nFinding limit cycle starting from period doubling point. Using initial conds.:"
-    + f"\n\t2T: {4*pdouble_period:.2f}"
+    + f"\n\t2T: {2*pdouble_period:.2f}"
     + f"\n\tp1: {pdouble_parameter:.2f}"
     + f"\n\tx: ({pdouble_point[0]:.2f}, {pdouble_point[1]:.2f}, {pdouble_point[2]:.2f})"
 )
 mcm.x = pdouble_point
 MCM.p1 = pdouble_parameter
 cycle, cycle_valid = continuation.shootingMethod(
-    mcm, "pdouble-switch", period_guess=4*pdouble_period, stepsize=0.0, tolerance=1e-12
+    mcm, "pdouble-switch", period_guess=2*pdouble_period, stepsize=0.0, tolerance=1e-12
 )
 cycle_point = cycle[:n]
 h = cycle[n : 2 * n]

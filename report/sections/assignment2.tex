@@ -52,17 +52,22 @@ points in the parameter $ p_1 \in [0.5, 1] $ and plot the continuation in Figure
     \includegraphics[width=0.8\textwidth]{figures/mcm_continuation.png}
     \caption{Continuation using the arc-length method of the stable stationary points in the parameter $p_1$,
     point 5 (left) and point 8 (right). The former encounters a bifurcation at $p_1 \approx 0.71$. From this 
-    Hopf-bifurcation an unstable stationary solution and a limit cycle emerges.}
+    Hopf-bifurcation ($\textbf{H0}$) an unstable stationary solution and a stable limit cycle emerges. This limit cycle 
+    then encounters a period doubling bifurcation at $p_1 \approx 0.923$ ($\textbf{PD1}$) and splits into a stable and unstable part.
+    The stable part then encounters another period doubling bifurcation at $p_1 \approx 0.944$ ($\textbf{PD2}$) and splits again.
+    The stable part of this limit cycle then encounters a third period doubling bifurcation at $p_1 \approx 0.949$ ($\textbf{PD3}$). However,
+    the last bifurcation is not stable and the limit cycle seems to rejoin the original limit cycle.}
     \label{fig:mcm_continuation}
 \end{figure}
 
 The bifurcation that occurs during the continuation of point 5 in Figure \ref{fig:mcm_continuation} is given by
 \begin{align*}
-    \text{Bifurcation type} & : \text{subcritical?} \ \text{Hopf} \\
-    \text{Parameter} & : p_1 \\
-    \text{Critical value} & : 0.71 \\
-    \text{Eigenvalues} & : 0 \pm 0.36i, -0.53\\
-    x_1, x_2, x_3 & : 0.13, 0.67, 0.16
+    \textbf{Bifurcation type} & : \text{Hopf} \\
+    \textbf{Label} &: \text{H0} \\
+    \textbf{Parameter} & : p_1 \\
+    \textbf{Critical value} & : 0.71 \\
+    \textbf{Eigenvalues} & : 0 \pm 0.36i, -0.53\\
+    \mathbf{x}& : 0.13, 0.67, 0.16
 \end{align*}
 This bifurcation point was found by applying an indirect method based on the interpolation of test function values, adapted from 
 Seydel's book (section 5.3.1). The particular test function used was the maximum of the real part of the eigenvalues of
@@ -74,11 +79,11 @@ That is to say, the eigenvalues of the system jacobian at the continuation step 
     &\textbf{before: } &-1.4\times10^{-4} \pm 0.36i, -0.53,\\
     &\textbf{after: }  &1.38\times10^{-4} \pm 0.36i, -0.53	
 \end{align*}
-which shows the eigenvalues pases through the imaginary axis with non-zero velocity.
+which shows the eigenvalues pass the imaginary axis with non-zero velocity.
 
-From the hopf bifurcation we determine the first dynamical solution using the method described in 
+From the (static) Hopf-bifurcation we determine the first dynamical solution using the method described in 
 section 7.6.2 of Seydel's book. In other words we solve the following BVP 
-\begin{align*}
+\begin{align}
     \left(\begin{array}{l}
         \mathbf{x} \\
         T \\
@@ -95,13 +100,18 @@ section 7.6.2 of Seydel's book. In other words we solve the following BVP
         \sum_i h_i \partial f_1 / \partial x_i \\
         h_1(0)-1
         \end{array}\right)=\mathbf{0},
-\end{align*}
+\end{align}
 using the shooting method in order to switch from the stationary solution to the limit cycle. In particular, we initialize the system 
 to a point either on or close to the Hopf-bifurcation, because this point is close to the limit cycle. We then provide an initial guess for the 
 period of the limit cycle, and solve the BVP using the shooting method. To do so, we make use of Scipy's \lstinline|integrate.solve_ivp| and \lstinline|optimize.fsolve| functions.
 In short, the former allows us to integrate the system of ODEs, while the latter allows us to solve the BVP. 
 
-Going into more detail, we use \lstinline|integrate.solve_ivp| to integrate the system of ODEs over some period $T$ and then use the final values of the integration to calculate the residuals of the boundary conditions.
+Going into more detail, we use \lstinline|integrate.solve_ivp| 
+\footnote{We use a maximum timestep of 0.001. I did not do initially and it gave the 
+wrong results I discussed in my last submission. Same goes for the Floquet multipliers, for which
+I used the same Scipy function. Fixing the max time step now gives the right values allowing me to find
+the period doubling bifurcations.}
+to integrate the system of ODEs over some period $T$ and then use the final values of the integration to calculate the residuals of the boundary conditions.
 This defines an objective function that we want to minimize. We then use \lstinline|optimize.fsolve| to find the values of the initial conditions that make the residuals zero. \lstinline|optimize.fsolve| will 
 effectively find the initial conditions that make the solution of the BVP a limit cycle.
 
@@ -114,15 +124,41 @@ The solution we obtain upon completing above process is
 \end{align*}
 from which we get a more accurate estimate for the period of the limit cycle.
 
-\subsection{Continuation of limit cycle}
+\subsection{Continuation of limit cycle from Hopf-bifurcation}
 We use the solution of the BVP from the previous section as an initial guess for the continuation of the limit cycle.
-Following the method outlined in section 7.6.3 of Seydel's book, we repeatedly solve the BVP in the same way we did before, wherein each 
-iteration starts with the solution of the previous iteration plus a small perturbation given 
-by $\mathbf{h}$ (Equation 7.24, Seydel)
+Following the method outlined in section 7.6.3 of Seydel's book, we continue the limit cycles from the dynamic Hopf-bifurcation 
+point $(\mathbf{x}^{(0)}, T^{(0)}, p_1^{(0)}, \mathbf{h}^{(0)})$ in the parameter $p_1$ by repeatedly solving the boundary value problem 
+(Seydel, Equation 7.6c, p. 306)
+\begin{align}
+    \left(\begin{array}{c}
+        \mathbf{x} \\
+        T \\
+        \lambda
+        \end{array}\right)^{\prime}=\left(\begin{array}{c}
+        T \mathbf{f}(\mathbf{x}, \lambda) \\
+        0 \\
+        0
+        \end{array}\right), \quad\left(\begin{array}{c}
+        \mathbf{x}(0)-\mathbf{y}(1) \\
+        f_j(\mathbf{y}(0), \lambda) \\
+        p_1^{(k+1)}-p_1^{(k)} - \delta_p
+        \end{array}\right)=\mathbf{0} ,
+\label{eq:continuation_system}
+\end{align}
+where $\delta_p \approx = 0.005$ is a small value that determines the step size in the parameter $p_1$ and $j=1$ (phase condition).
+
+The shooting method needs an initial guess, as it is really just a root finding algorithm. 
+Therefore, each iteration starts with the solution of the previous iteration. 
+Note that the first iteration starts with a small perturbation in the direction of $\mathbf{h}$ (Equation 7.24, Seydel)
 \[
-    \bar{\mathbf{x}}^{(k+1)} = \mathbf{x}^{(k)} + \delta \mathbf{h}^{(k)}, \quad \bar{T}^{k+1} = T^{k}, \quad \bar{p}_1^{(k+1)} = p_1^{(k)},
+    \textbf{initial guess: }\mathbf{x}^{(k+1)} = 
+    \begin{cases}
+        \mathbf{x}^{(0)} + \delta_{\mathbf{h}}\mathbf{h}^{(0)}, & \text{if } k = 0, \\
+        \mathbf{x}^{(k)}, & \text{otherwise},
+    \end{cases}
+    \quad T^{(k+1)} = T^{(k)}, \quad p_1^{(k+1)} = p_1^{(k)},
 \]
-for a suitably small parameter $\delta \approx 0.13$. This results a sequence of limit cycles starting from the Hopf point (k=0)
+for a suitably small parameter $\delta_{\mathbf{h}} \approx 0.01$. This results in a sequence of limit cycles starting from the Hopf point (k=0)
 \[
     \textrm{cycle}^{(k)} = \left\{\mathbf{x}^{(k)}, T^{(k)}, p_1^{(k)} \right\}, \quad k = 0, 1, 2, \ldots
 \]
@@ -130,42 +166,151 @@ which we integrate over their respective periods and plot in Figure \ref{fig:mcm
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.7\textwidth]{figures/mcm_limit_cycles.png}
-    \caption{Continuation of the limit cycle in the parameter $p_1$. The colors indicate the the flow of time
-    from dark to light.}
+    \caption{Continuation of the limit cycle in the parameter $p_1$. The colors indicate the increase in $p_1$ from dark to light.}
     \label{fig:mcm_limit_cycle_continuation}
 \end{figure}
 The limit cycles in Figure \ref{fig:mcm_limit_cycle_continuation} are averaged both in time and in space to obtain the points in 
-Figure \ref{fig:mcm_limit_cycle_continuation}.
+Figure \ref{fig:mcm_limit_cycle_continuation}; thick green line from \textbf{H0} to \textbf{PD1} and thick, dashed red line from 
+\textbf{PD1} to the end of the graph.
 
 For each limit cycle we calculate the monodromy matrix $M$ using Algorithm 7.12
 from section 7.5.1 of Seydel. The eigenvalues of $M$ (Floquet multipliers) $\mu_j$ are then used to determine the stability of the limit cycle
 (according to Summary 7.5, p. 315, Seydel).
 
-The stability of the limit cycles obtained from this process is accordigly shown in Figure \ref{fig:mcm_continuation}, where 
-red and green crosses indicate unstable and stable limit cycles, respectively. 
-
-At this point we observe something unexpected. The limit cycles are all unstable, which is not what we would expect from the introductory text
-to this assignment. It was mentioned there that the limit-cycles should be stable.
-
-This descrepancy is likely due to an incorrectly calculated monodromy matrix. Frankly, this 
-mistake also hinders our progress in finding the period-doubling bifurcations and the route to chaos, as will become apparent in the next section.
+The stability of the limit cycles obtained from this process is accordingly shown in Figure \ref{fig:mcm_continuation}, where 
+the thick green- and thick, dashed red lines indicate stable and unstable limit cycles, respectively. 
 
 \subsection{Period doubling bifurcations}
 Period doubling bifurcations occur at those limit cycles where there is a $j$ for which $\mu_j = -1$.
-Hence, we continue the limit cycle (and calculate the monodromy matrices) until we find a multiplier close to $-1$. Then, we apply the
-shooting method to solve the BVP in Equation 7.27 of Seydel's book. This gives a point
-either on original branch or on the period-doubled branch, depending on how we choose the boundary conditions
-and what kind of symmetry we expect (section 6.4, Seydel). 
+Hence, we continue the limit cycle (and calculate the monodromy matrices) until we find a multiplier close to $-1$.\footnote{We use a tolerance of 0.01.}
+We then use interpolation to find the exact value of $p_1$ at which the period doubling bifurcation occurs.
+Doing this for the limit cycle we discussed in the previous section we find the
+\textbf{first period doubling bifurcation: } 
+\begin{align*}
+    \textbf{Bifurcation type} & : \text{period doubling} \\
+    \textbf{Label} &: \text{PD1} \\
+    \textbf{Parameter} & : p_1 \\
+    \textbf{Critical value} & : 0.923 \\
+    \textbf{Floquet multipliers} & : -1.00, 0, 1.00 \leftarrow \text{note the -1} \\
+    \mathbf{x}  & = (0.59, 0.17, 0.10) \\
+    \textbf{Period} & : 31.55 \\
+\end{align*}
+Starting from this interpolated period doubling bifurcation point we 
+apply the shooting method to solve the BVP in Equation 7.27 of Seydel's book. 
+\begin{align}
+    \left(\begin{array}{c}
+        \mathbf{x} \\
+        T \\
+        \lambda \\
+        \mathbf{h}
+        \end{array}\right)^{\prime}=\left(\begin{array}{c}
+        T \mathbf{f}(\mathbf{x}, \lambda) \\
+        0 \\
+        0 \\
+        T \mathbf{f}_{\mathbf{x}}(\mathbf{x}, \lambda) \mathbf{h}
+        \end{array}\right), \quad\left(\begin{array}{c}
+        \mathbf{x}(0)-\mathbf{x}(1) \\
+        p(\mathbf{x}(0), \lambda) \\
+        \mathbf{h}(0)+\mathbf{h}(1) \\
+        h_k(0)-1
+        \end{array}\right)=\mathbf{0} .
+\end{align}
+This gives a point on the period doubled branch $(\mathbf{x}^{(0)}, T^{(0)}, p_1^{(0)}, \mathbf{h}^{(0)})$, 
+which we can continue in the same way as we did in the previous section.
+That is to say, we repeatedly apply the shooting method to BVP in Equation \ref{eq:continuation_system} 
+The only differences being that we take slightly smaller steps $\delta_p = 0.001$, and 
+we specify slightly different initial guesses for the continuation of the period-doubled limit cycle. Namely,
+\begin{align*}
+    \textbf{initial guess: }&\mathbf{x}^{(k+1)} = 
+    \begin{cases}
+        \mathbf{x}^{(0)} + \delta \mathbf{h}^{(0)}, & \text{if } k = 0, \\
+        \mathbf{x}^{(k)}, & \text{otherwise},
+    \end{cases} \\
+    &T^{(k+1)} = 
+    \begin{cases}
+        2 T^{(0)}, & \text{if } k = 0, \\
+        T^{(k)}, & \text{otherwise}, 
+    \end{cases}\\
+    &p_1^{(k+1)} = p_1^{(k)}.
+\end{align*}
+This results in Figure \ref{fig:mcm_period_doubled_branch} where we plot the period-doubled limit cycles in the parameter $p_1$.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/mcm_first_pdouble.png}
+    \caption{Similar to Figure \ref{fig:mcm_limit_cycle_continuation}, but now showing the period-doubled limit cycles. Note the double loop 
+    in the limit cycle.}
+    \label{fig:mcm_period_doubled_branch}
+\end{figure}
 
-Once we have the period-doubled branch, we can continue it in the same way as the original branch. That is using the continuation method
-from the previous section and the solution to the BVP 7.27. We continue until
-we find a second period-doubling bifurcation, and so on. 
+By again calculating the monodromy matrix and corresponding Floquet multipliers for every cycle, we find the second period-doubling bifurcation
+\begin{align*}
+    \textbf{Bifurcation type} & : \text{period doubling} \\
+    \textbf{Label} &: \text{PD2} \\
+    \textbf{Parameter} & : p_1 \\
+    \textbf{Critical value} & : 0.944 \\
+    \textbf{Floquet multipliers} & : -1.00, 0, 1.00 \\
+    \mathbf{x}  & = (0.43, 0.28, 0.12) \\
+    \textbf{Period} & : 64.92 \\
+\end{align*}
 
-Alternatively, we can predict the parameter values at which we expect period-doublings 
+We can continue the steps outlined above to find more period-doubling bifurcations. 
+% This results in Figure \ref{fig:mcm_period_doubled_branch_2}
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.7\textwidth]{figures/mcm_second_pdouble.png}
+%     \caption{Continuation of the period-doubled limit cycle in the parameter $p_1$. The colors indicate the the flow of time
+%     from dark to light.}
+%     \label{fig:mcm_period_doubled_branch_2}
+% \end{figure}
+For instance, the third period-doubling bifurcation occurs at
+\begin{align*}
+    \textbf{Bifurcation type} & : \text{period doubling} \\
+    \textbf{Label} &: \text{PD3} \\
+    \textbf{Parameter} & : p_1 \\
+    \textbf{Critical value} & : 0.949 \\
+    \textbf{Floquet multipliers} & : -1.00, 0, 1.00 \\
+    \mathbf{x}  & = (0.47, 0.19, 0.09) \\
+    \textbf{Period} & : 130.3 \\
+\end{align*}
+However, this result must be taken with a grain of salt, as the remaining branch this bifurcation is unstable and seems
+to rejoin the original limit cycle stemming from the Hopf bifurcation for $p_1 > 0.949$. 
+
+As an alternative, we can predict the parameter values at which we expect period-doublings 
 to occur using Feigenbaum's law (Equation 7.14, Seydel)
-\[
+\begin{equation}
     \lim_{n \to \infty} \frac{p_{n+1} - p_n}{p_{n} - p_{n-1}} = 0.21416 \dots,
-\]
+\label{eq:feigenbaum}
+\end{equation}
+This gives the following predictions for the period-doubling bifurcations in Table \ref{tab:period_doubling_predictions}.
+
+\subsection{Route to chaos}
+In order to determine whether a system exhibits chaos, we (numerically) calculate the Lyapunov exponents of the system.
+We use the above predicted values for the period-doubling bifurcations as well as the point \textbf{PD3} as an initial condition.
+Then we iteratively integrate the system over a large time-span ($t_{\textrm{end}} = 100$) with small timestep ($dt = 0.001$) and 
+calculate the Lyapunov exponents at each iteration. The Lyapunov exponents are then averaged over time to obtain the approximate Lyapunov spectrum.
+\footnote{this algorithm is adapted from 
+\href[page=214]{http://ndl.ethernet.edu.et/bitstream/123456789/12518/1/80pdf.pdf}{CHAOS: An Introduction to Dynamical Systems} 
+by Kathleen Alligood, section 5.2 "Numerical Calculation of Lyapunov Exponents", p.199 (214 in pdf).}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        Period doubling & $p_1$ & Lyapunov spectrum \\
+        \hline
+        PD1 & $\mathbf{0.923}$ & 0.00, -0.04, -0.50 \\
+        PD2 & $\mathbf{0.944}$ & 0.01, -0.06, -0.51 \\
+        PD3 & 0.949 & 0.02, -0.06, -0.52 \\
+        PD4 & 0.950 & 0.02, -0.06, -0.52 \\
+        PD5 & 0.950 & 0.02, -0.06, -0.52 \\
+        PD6 & 0.950 & 0.02, -0.06, -0.52 \\
+        \hline
+    \end{tabular}
+    \caption{Predicted period doubling bifurcations using Feigenbaum's law and corresponding approximated Lyapunov exponents.
+    \textbf{PD1} and \textbf{PD2} are taken from the continuation of the limit cycles, while the rest are predicted using
+    the recurrence relation in Equation \ref{eq:feigenbaum}.}
+    \label{tab:period_doubling_predictions}
+\end{table}
+We observe that one Lyapunov exponent is positive for values of $p_1 > 0.944$. This indicates that the system is chaotic for these values of $p_1$.
 
 \subsection{Conclusion}
 In the above treatment of the MCM system we 
@@ -173,17 +318,7 @@ In the above treatment of the MCM system we
     \item Found the stationary points of the system and continued the stable ones in the parameter $p_1$;
     \item Found a Hopf-bifurcation at $p_1 \approx 0.71$ and calculated the first limit cycle using the shooting method;
     \item Continued the limit cycle in the parameter $p_1$ and calculated the stability of the limit cycles;
-    \item Described a method for finding period-doubling bifurcations and/or predicting them.
+    \item Found the first, second and third period-doubling bifurcations at $p_1 \approx 0.923$, $p_1 \approx 0.944$ and $p_1 \approx 0.949$, respectively;
+    \item Verified the period-doubling bifurcations using Feigenbaum's law and calculated the Lyapunov exponents of the system;
+    \item Determined that the system exhibits chaos for $p_1 > 0.949$.
 \end{enumerate}
-
-We have yet
-\begin{enumerate}
-    \item To find the period-doubling bifurcations of the limit cycles and study the stability of the resulting
-    period-doubled limit cycles;
-    \item To determine the period doubling route to chaos.
-\end{enumerate}
-
-The reason for these unexplored parts is (probably) due to an incorrectly calculated monodromy matrix,
-which results in an incorrect stability analysis of the limit cycles. This hindered our progress
-in finding the period-doubling bifurcations and the route to chaos, since the proposed method
-for doing so assumed good approximations of the monodromy matrix.
